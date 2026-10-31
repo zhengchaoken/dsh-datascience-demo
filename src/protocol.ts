@@ -134,6 +134,28 @@ export interface DatasetQueryResult {
   elapsedMs: number
 }
 
+/** 「数据科学」菜单里的一篇主文档。 */
+export interface DataDocEntry {
+  /** 稳定标识，例如 `framework`、`L4`。 */
+  id: string
+  /** 菜单显示名称，例如「L4 规范性分析」。 */
+  label: string
+  /** 相对 `src/data` 的文档路径，例如 `L4/README.md`。 */
+  path: string
+  /** 一句话说明。 */
+  summary: string
+}
+
+/** `GET /doc` 的响应：一篇 Markdown 文档。 */
+export interface DataDocContent {
+  /** 相对 `src/data` 的路径。 */
+  path: string
+  /** 文档标题（取首个一级标题）。 */
+  title: string
+  /** Markdown 原文。 */
+  markdown: string
+}
+
 /** 一次环境检查的完整结果。 */
 export interface EnvironmentReport {
   system: SystemInfo

@@ -4,6 +4,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import type {
+  DataDocContent,
+  DataDocEntry,
   DatasetInfo,
   DatasetQueryResult,
   DatasetTableInfo,
@@ -12,19 +14,23 @@ import type {
 } from '../protocol.ts'
 import {
   ApiError,
+  fetchDataDoc,
+  fetchDataDocs,
   fetchDataset,
   fetchEnvironment,
   fetchInstallState,
   runDatasetQuery,
   startInstall,
 } from './api.ts'
+import { DocView } from './markdown.tsx'
 
-/** 页面标识：示例数据下挂概览页与九张表页。 */
+/** 页面标识：示例数据下挂概览页、九张表页与数据科学文档页。 */
 type Page =
   | { kind: 'home' }
   | { kind: 'environment' }
   | { kind: 'dataset' }
   | { kind: 'dataset-table'; table: string }
+  | { kind: 'science'; doc: string }
 
 /** 示例数据菜单里的九张表（静态清单，行数等动态信息从 /dataset 接口补充）。 */
 const DATASET_MENU: { name: string; label: string }[] = [
@@ -95,6 +101,18 @@ function IconTable({ size = 12 }: { size?: number }): ReactElement {
   )
 }
 
+/** 「数据科学」入口：翻开的书页，呼应方法论手册。 */
+function IconBook({ size = 16 }: { size?: number }): ReactElement {
+  return (
+    <svg className="dsd-menu-icon" viewBox="0 0 16 16" width={size} height={size} fill="none"
+      stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 4.2c-1.1-.9-2.6-1.4-4.6-1.4v9.4c2 0 3.5.5 4.6 1.4" />
+      <path d="M8 4.2c1.1-.9 2.6-1.4 4.6-1.4v9.4c-2 0-3.5.5-4.6 1.4" />
+      <path d="M8 4.2v9.4" />
+    </svg>
+  )
+}
+
 function IconPlay({ size = 13 }: { size?: number }): ReactElement {
   return (
     <svg viewBox="0 0 16 16" width={size} height={size} fill="currentColor" stroke="none">
@@ -161,12 +179,15 @@ function HeroArt(): ReactElement {
 }
 
 /** 顶部 banner：一级/二级导航。 */
-function Banner({ page }: { page: Page }): ReactElement {
+function Banner({ page, docTitle }: { page: Page; docTitle: string | null }): ReactElement {
   const trail: string[] = ['首页']
   if (page.kind === 'environment') trail.push('环境检查')
   if (page.kind === 'dataset') trail.push('示例数据')
   if (page.kind === 'dataset-table') {
     trail.push('示例数据', DATASET_MENU.find(item => item.name === page.table)?.label ?? page.table)
+  }
+  if (page.kind === 'science') {
+    trail.push('示例数据', '数据科学', docTitle ?? '文档')
   }
   return (
     <header className="dsd-banner">
@@ -197,23 +218,29 @@ function Banner({ page }: { page: Page }): ReactElement {
   )
 }
 
-/** 左侧可收缩菜单：首页、环境检查、示例数据（父菜单，下挂九张表）。 */
+/** 左侧可收缩菜单：首页、环境检查、示例数据（父菜单，下挂九张表与数据科学）。 */
 function Sidebar({
   page,
   collapsed,
   datasetOpen,
+  scienceOpen,
+  docs,
   onToggle,
   onDatasetToggle,
+  onScienceToggle,
   onSelect,
 }: {
   page: Page
   collapsed: boolean
   datasetOpen: boolean
+  scienceOpen: boolean
+  docs: DataDocEntry[]
   onToggle: () => void
   onDatasetToggle: () => void
+  onScienceToggle: () => void
   onSelect: (page: Page) => void
 }): ReactElement {
-  const inDataset = page.kind === 'dataset' || page.kind === 'dataset-table'
+  const inDataset = page.kind === 'dataset' || page.kind === 'dataset-table' || page.kind === 'science'
 
   if (collapsed) {
     return (
@@ -250,6 +277,17 @@ function Sidebar({
             aria-label="示例数据"
           >
             <IconDatabase />
+          </button>
+          <button
+            className={`dsd-rail-button${page.kind === 'science' ? ' is-active' : ''}`}
+            onClick={() => {
+              onToggle()
+              onSelect({ kind: 'science', doc: page.kind === 'science' ? page.doc : 'README.md' })
+            }}
+            title="数据科学"
+            aria-label="数据科学"
+          >
+            <IconBook />
           </button>
         </div>
       </aside>
@@ -311,6 +349,35 @@ function Sidebar({
                 <span className="dsd-menu-sub-name">{item.name}</span>
               </button>
             ))}
+            <button
+              className={`dsd-menu-item dsd-menu-parent dsd-menu-nested${
+                page.kind === 'science' ? ' is-open' : ''
+              }`}
+              onClick={onScienceToggle}
+            >
+              <IconBook />
+              <span className="dsd-menu-label">数据科学</span>
+              <span className="dsd-chevron">
+                <IconChevron direction={scienceOpen ? 'down' : 'right'} size={11} />
+              </span>
+            </button>
+            {scienceOpen ? (
+              <div className="dsd-menu-sub dsd-menu-sub-deep">
+                {docs.map(item => (
+                  <button
+                    key={item.id}
+                    className={`dsd-menu-item${
+                      page.kind === 'science' && page.doc === item.path ? ' is-active' : ''
+                    }`}
+                    onClick={() => onSelect({ kind: 'science', doc: item.path })}
+                    title={item.summary}
+                  >
+                    <IconBook size={12} />
+                    <span className="dsd-menu-label">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1325,6 +1392,12 @@ export function App(): ReactElement {
   const [page, setPage] = useState<Page>({ kind: 'home' })
   const [collapsed, setCollapsed] = useState(false)
   const [datasetOpen, setDatasetOpen] = useState(false)
+  const [scienceOpen, setScienceOpen] = useState(false)
+  const [docs, setDocs] = useState<DataDocEntry[]>([])
+  const [doc, setDoc] = useState<DataDocContent | null>(null)
+  const [docLoading, setDocLoading] = useState(false)
+  const [docError, setDocError] = useState<string | null>(null)
+  const [docReload, setDocReload] = useState(0)
   const [dataset, setDataset] = useState<DatasetInfo | null>(null)
   const [datasetError, setDatasetError] = useState<string | null>(null)
   const [report, setReport] = useState<EnvironmentReport | null>(null)
@@ -1407,13 +1480,65 @@ export function App(): ReactElement {
     }
   }, [page.kind, dataset, loadDataset])
 
+  // 「数据科学」菜单条目随面板首次加载一起取回。
+  useEffect(() => {
+    let cancelled = false
+    void fetchDataDocs()
+      .then(list => {
+        if (!cancelled) setDocs(list)
+      })
+      .catch(() => {
+        if (!cancelled) setDocs([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const docPath = page.kind === 'science' ? page.doc : null
+
+  // 切换文档时重新读取 Markdown。
+  useEffect(() => {
+    if (docPath === null) return undefined
+    let cancelled = false
+    setDocLoading(true)
+    setDocError(null)
+    void fetchDataDoc(docPath)
+      .then(content => {
+        if (!cancelled) setDoc(content)
+      })
+      .catch(failure => {
+        if (!cancelled) {
+          setDoc(null)
+          setDocError(failureMessage(failure))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDocLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [docPath, docReload])
+
+  /** 「数据科学」父菜单：展开/收起，首次展开时进入分析框架。 */
+  const handleScienceToggle = useCallback((): void => {
+    setScienceOpen(open => {
+      const next = !open
+      if (next) {
+        setPage(current => (current.kind === 'science' ? current : { kind: 'science', doc: 'README.md' }))
+      }
+      return next
+    })
+  }, [])
+
   /** 「示例数据」父菜单：展开/收起，未进入过该栏目时跳到概览页。 */
   const handleDatasetToggle = useCallback((): void => {
     setDatasetOpen(open => {
       const next = !open
       if (next) {
         setPage(current =>
-          current.kind === 'dataset' || current.kind === 'dataset-table'
+          current.kind === 'dataset' || current.kind === 'dataset-table' || current.kind === 'science'
             ? current
             : { kind: 'dataset' },
         )
@@ -1425,19 +1550,26 @@ export function App(): ReactElement {
   /** 在示例数据栏目内跳转时保持菜单展开。 */
   const handleSelect = useCallback((next: Page): void => {
     if (next.kind === 'dataset' || next.kind === 'dataset-table') setDatasetOpen(true)
+    if (next.kind === 'science') {
+      setDatasetOpen(true)
+      setScienceOpen(true)
+    }
     setPage(next)
   }, [])
 
   return (
     <div className="dsd-app">
-      <Banner page={page} />
+      <Banner page={page} docTitle={doc?.title ?? null} />
       <div className="dsd-body">
         <Sidebar
           page={page}
           collapsed={collapsed}
           datasetOpen={datasetOpen}
+          scienceOpen={scienceOpen}
+          docs={docs}
           onToggle={() => setCollapsed(value => !value)}
           onDatasetToggle={handleDatasetToggle}
+          onScienceToggle={handleScienceToggle}
           onSelect={handleSelect}
         />
         <main className="dsd-main">
@@ -1459,11 +1591,19 @@ export function App(): ReactElement {
               onRetry={() => void loadDataset()}
               onOpenTable={table => handleSelect({ kind: 'dataset-table', table })}
             />
-          ) : (
+          ) : page.kind === 'dataset-table' ? (
             <DatasetTablePage
               key={page.table}
               table={page.table}
               meta={dataset?.tables.find(table => table.name === page.table) ?? null}
+            />
+          ) : (
+            <DocView
+              doc={doc}
+              loading={docLoading}
+              error={docError}
+              onRetry={() => setDocReload(value => value + 1)}
+              onNavigate={path => handleSelect({ kind: 'science', doc: path })}
             />
           )}
         </main>

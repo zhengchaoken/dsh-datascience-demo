@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """生成结果校验：外键完整性 + 金额一致性 + 分布抽查。"""
+import os
 import sqlite3
 
-c = sqlite3.connect(r'f:\code\dataai\data\ecommerce\ecommerce.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ecommerce.db')
+c = sqlite3.connect(f'file:{DB_PATH}?mode=ro', uri=True)
 
 fk = c.execute('PRAGMA foreign_key_check').fetchall()
 print('FK违规:', fk[:5] if fk else '无')

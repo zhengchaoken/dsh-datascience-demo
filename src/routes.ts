@@ -11,6 +11,7 @@ import { errorMessage, readJsonBody, writeError, writeJson } from './http.ts'
 import { probeEnvironment } from './env/probe.ts'
 import type { InstallController } from './env/install.ts'
 import { describeDataset, runDatasetQuery } from './data/ecommerce/dataset.ts'
+import { DATA_DOCS, readDoc, readDocAsset } from './docs/docs.ts'
 
 /** 注册这组路由所需的依赖。 */
 export interface RoutesDeps {
@@ -79,6 +80,56 @@ export function makeRoutes(deps: RoutesDeps): { routes: WebRoute[] } {
         } catch (failure) {
           // SQL 校验失败与 SQLite 语法错误都属于可预期的用户输入错误，按 400 返回。
           writeError(res, 400, errorMessage(failure))
+        }
+        return
+      }
+
+      if (pathname === '/api/dsh-datascience/docs') {
+        if (req.method !== 'GET') {
+          writeError(res, 405, '只支持 GET')
+          return
+        }
+        writeJson(res, 200, DATA_DOCS)
+        return
+      }
+
+      if (pathname === '/api/dsh-datascience/doc') {
+        if (req.method !== 'GET') {
+          writeError(res, 405, '只支持 GET')
+          return
+        }
+        const target = new URL(req.url ?? '/', 'http://localhost').searchParams.get('path')
+        if (target === null || target.trim() === '') {
+          writeError(res, 400, '缺少文档路径')
+          return
+        }
+        try {
+          writeJson(res, 200, await readDoc(target))
+        } catch (failure) {
+          writeError(res, 404, errorMessage(failure))
+        }
+        return
+      }
+
+      if (pathname === '/api/dsh-datascience/doc-asset') {
+        if (req.method !== 'GET') {
+          writeError(res, 405, '只支持 GET')
+          return
+        }
+        const target = new URL(req.url ?? '/', 'http://localhost').searchParams.get('path')
+        if (target === null || target.trim() === '') {
+          writeError(res, 400, '缺少资源路径')
+          return
+        }
+        try {
+          const asset = await readDocAsset(target)
+          res.writeHead(200, {
+            'content-type': asset.mime,
+            'cache-control': 'public, max-age=3600',
+          })
+          res.end(asset.content)
+        } catch (failure) {
+          writeError(res, 404, errorMessage(failure))
         }
         return
       }

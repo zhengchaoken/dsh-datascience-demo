@@ -3,6 +3,8 @@
  */
 
 import type {
+  DataDocContent,
+  DataDocEntry,
   DatasetInfo,
   DatasetQueryResult,
   EnvironmentReport,
@@ -81,4 +83,23 @@ export async function runDatasetQuery(sql: string): Promise<DatasetQueryResult> 
     body: JSON.stringify({ sql }),
   })
   return readJson<DatasetQueryResult>(response)
+}
+
+/** 读取「数据科学」菜单条目。 */
+export async function fetchDataDocs(): Promise<DataDocEntry[]> {
+  const response = await fetch(`${BASE}/docs`, { headers: { accept: 'application/json' } })
+  return readJson<DataDocEntry[]>(response)
+}
+
+/** 读取一篇 Markdown 文档。 */
+export async function fetchDataDoc(path: string): Promise<DataDocContent> {
+  const response = await fetch(`${BASE}/doc?path=${encodeURIComponent(path)}`, {
+    headers: { accept: 'application/json' },
+  })
+  return readJson<DataDocContent>(response)
+}
+
+/** 文档内图表的访问地址（相对 `src/data` 的路径）。 */
+export function docAssetUrl(path: string): string {
+  return `${BASE}/doc-asset?path=${encodeURIComponent(path)}`
 }
