@@ -87,6 +87,8 @@ else:
     print("[字体] 警告：未找到中文字体")
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
+if CJK_FONT_FILE:
+    plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 
 
 # ================== 数据加载 ==================

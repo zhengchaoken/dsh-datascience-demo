@@ -187,7 +187,7 @@ function Banner({ page, docTitle }: { page: Page; docTitle: string | null }): Re
     trail.push('示例数据', DATASET_MENU.find(item => item.name === page.table)?.label ?? page.table)
   }
   if (page.kind === 'science') {
-    trail.push('示例数据', '数据科学', docTitle ?? '文档')
+    trail.push('数据科学', docTitle ?? '文档')
   }
   return (
     <header className="dsd-banner">
@@ -218,7 +218,7 @@ function Banner({ page, docTitle }: { page: Page; docTitle: string | null }): Re
   )
 }
 
-/** 左侧可收缩菜单：首页、环境检查、示例数据（父菜单，下挂九张表与数据科学）。 */
+/** 左侧可收缩菜单：首页、环境检查、示例数据与数据科学（两个并列的一级菜单）。 */
 function Sidebar({
   page,
   collapsed,
@@ -240,7 +240,7 @@ function Sidebar({
   onScienceToggle: () => void
   onSelect: (page: Page) => void
 }): ReactElement {
-  const inDataset = page.kind === 'dataset' || page.kind === 'dataset-table' || page.kind === 'science'
+  const inDataset = page.kind === 'dataset' || page.kind === 'dataset-table'
 
   if (collapsed) {
     return (
@@ -349,35 +349,33 @@ function Sidebar({
                 <span className="dsd-menu-sub-name">{item.name}</span>
               </button>
             ))}
-            <button
-              className={`dsd-menu-item dsd-menu-parent dsd-menu-nested${
-                page.kind === 'science' ? ' is-open' : ''
-              }`}
-              onClick={onScienceToggle}
-            >
-              <IconBook />
-              <span className="dsd-menu-label">数据科学</span>
-              <span className="dsd-chevron">
-                <IconChevron direction={scienceOpen ? 'down' : 'right'} size={11} />
-              </span>
-            </button>
-            {scienceOpen ? (
-              <div className="dsd-menu-sub dsd-menu-sub-deep">
-                {docs.map(item => (
-                  <button
-                    key={item.id}
-                    className={`dsd-menu-item${
-                      page.kind === 'science' && page.doc === item.path ? ' is-active' : ''
-                    }`}
-                    onClick={() => onSelect({ kind: 'science', doc: item.path })}
-                    title={item.summary}
-                  >
-                    <IconBook size={12} />
-                    <span className="dsd-menu-label">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
+          </div>
+        ) : null}
+        <button
+          className={`dsd-menu-item dsd-menu-parent${page.kind === 'science' ? ' is-open' : ''}`}
+          onClick={onScienceToggle}
+        >
+          <IconBook />
+          <span className="dsd-menu-label">数据科学</span>
+          <span className="dsd-chevron">
+            <IconChevron direction={scienceOpen ? 'down' : 'right'} size={11} />
+          </span>
+        </button>
+        {scienceOpen ? (
+          <div className="dsd-menu-sub">
+            {docs.map(item => (
+              <button
+                key={item.id}
+                className={`dsd-menu-item${
+                  page.kind === 'science' && page.doc === item.path ? ' is-active' : ''
+                }`}
+                onClick={() => onSelect({ kind: 'science', doc: item.path })}
+                title={item.summary}
+              >
+                <IconBook size={12} />
+                <span className="dsd-menu-label">{item.label}</span>
+              </button>
+            ))}
           </div>
         ) : null}
       </div>
@@ -1538,22 +1536,17 @@ export function App(): ReactElement {
       const next = !open
       if (next) {
         setPage(current =>
-          current.kind === 'dataset' || current.kind === 'dataset-table' || current.kind === 'science'
-            ? current
-            : { kind: 'dataset' },
+          current.kind === 'dataset' || current.kind === 'dataset-table' ? current : { kind: 'dataset' },
         )
       }
       return next
     })
   }, [])
 
-  /** 在示例数据栏目内跳转时保持菜单展开。 */
+  /** 在对应栏目内跳转时保持菜单展开。 */
   const handleSelect = useCallback((next: Page): void => {
     if (next.kind === 'dataset' || next.kind === 'dataset-table') setDatasetOpen(true)
-    if (next.kind === 'science') {
-      setDatasetOpen(true)
-      setScienceOpen(true)
-    }
+    if (next.kind === 'science') setScienceOpen(true)
     setPage(next)
   }, [])
 

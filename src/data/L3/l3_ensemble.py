@@ -80,6 +80,8 @@ else:
     plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
+if CJK_FONT_FILE:
+    plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 
 # ================== 报告构建器 ==================
 class Report:

@@ -90,6 +90,8 @@ else:
     print("[字体] 警告：未找到中文字体")
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
+if CJK_FONT_FILE:
+    plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 
 # ================== 连接数据库（只读） ==================
 print("[数据] 连接数据库: %s" % DB_PATH)

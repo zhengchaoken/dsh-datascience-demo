@@ -61,6 +61,8 @@ if CJK_FONT_FILE:
     plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
+if CJK_FONT_FILE:
+    plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 
 conn = sqlite3.connect('file:%s?mode=ro' % DB_PATH.replace('\\', '/'), uri=True)
 

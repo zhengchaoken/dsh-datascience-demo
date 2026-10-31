@@ -882,15 +882,6 @@ export const APP_CSS = `
 }
 
 /* ---------- 数据科学文档 ---------- */
-.dsd-menu-nested {
-  margin-top: 2px;
-}
-.dsd-menu-sub-deep {
-  padding-left: 14px;
-}
-.dsd-menu-sub-deep .dsd-menu-item {
-  font-size: 12px;
-}
 .dsd-doc-head {
   margin: 0 auto 14px;
   max-width: 980px;
