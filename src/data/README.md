@@ -35,7 +35,7 @@ python data/ecommerce/_verify.py                     # 校验外键与金额一�
 
 数据中刻意埋入的模式：双 11、618 大促峰值，春节低谷，周末效应，缓慢增长趋势，约 1.2% 批发型异常订单（单件商品数量 30~200）与 0.5% 价格异常订单（单价 ×10）——后两者是 L2 异常检测的靶子。
 
-> **已知问题（当前 build）**：约 20% 订单存在 `shipped_at` 时刻早于同日 `paid_at` 的时刻错位（日期粒度正确），系生成器中发货时钟独立随机所致，已被 [../engineering/data_quality_report.md](../engineering/data_quality_report.md) 的质量规则捕获。当前 `ecommerce.db`（SHA256 `c957ca93...`）保持原样，L1~L5 报告均基于此 build 生成；如需修复，改 `generate_dataset.py` 中发货时间逻辑后 `--force` 重新生成，但 rng 流会变化，整个库数据与所有下游报告数字都会改变，需重跑各层脚本。
+> **已知问题（当前 build）**：约 21% 订单存在 `shipped_at` 时刻早于同日 `paid_at` 的时刻错位（日期粒度正确），系生成器中发货时钟独立随机所致，已被 [../engineering/data_quality_report.md](../engineering/data_quality_report.md) 的质量规则捕获。当前 `ecommerce.db`（SHA256 `c957ca93...`）保持原样，L1~L5 报告均基于此 build 生成；如需修复，改 `generate_dataset.py` 中发货时间逻辑后 `--force` 重新生成，但 rng 流会变化，整个库数据与所有下游报告数字都会改变，需重跑各层脚本。
 
 ## 2. 表结构
 
@@ -107,8 +107,8 @@ python data/ecommerce/_verify.py                     # 校验外键与金额一�
 ### 2.6 payments / reviews / user_events / coupons
 
 - **payments**：order_id FK、payment_method（微信支付/支付宝/银行卡/余额）、payment_amount、paid_at、payment_status（成功/失败/已退款）
-- **reviews**：order_id + product_id + customer_id 三个 FK、rating（1-5 星）、review_content（中文短文本，L1 文本分析语料）、created_at
-- **user_events**：customer_id + product_id FK、event_type（view/cart）、event_time（下单前 7 天内的行为轨迹）
+- **reviews**：order_id + product_id + customer_id 三个 FK、rating（1-5 星）、review_content（中文短文本，L1 文本分析语料）、created_at（每单至多一条）
+- **user_events**：customer_id + product_id FK、event_type（view/cart）、event_time（约 6 成落在同客户同商品下单前 7 天内，其余为未转化行为）
 - **coupons**：coupon_type（满减/折扣/无门槛）、threshold_amount（门槛）、discount_value（减免额或折扣率）、valid_from/valid_to（分全年/双11/618 三档）
 
 ## 3. 表间业务关系
@@ -122,7 +122,7 @@ erDiagram
     orders ||--|{ order_items : "一笔订单至少一行明细"
     products ||--o{ order_items : "一个商品出现在多笔订单"
     orders ||--o| payments : "已支付订单对应一条支付"
-    orders ||--o{ reviews : "已签收订单可产生评价"
+    orders ||--o| reviews : "已完成订单至多产生一条评价"
     customers ||--o{ reviews : "客户发表评价"
     products ||--o{ reviews : "商品收到评价"
     customers ||--o{ user_events : "客户产生行为"
@@ -133,9 +133,9 @@ erDiagram
 
 1. **orders ↔ products 是多对多**，靠 order_items 连接，分析销量必须 JOIN 明细表。
 2. **金额链路**：`orders.total_amount = Σ(order_items.subtotal) + freight_amount`；`Σ(item_discount) = orders.discount_amount`。两条等式已在校验脚本中验证。
-3. **状态机**：待付款 →（支付）→ 已发货 →（签收）→ 已完成；任何阶段可转为已取消。时间链字段满足 `created_at ≤ paid_at ≤ shipped_at ≤ delivered_at`，未到达的节点为 NULL。
-4. **行为-交易闭环**：user_events（浏览/加购）发生在 orders.created_at 之前，可构造"浏览→加购→购买"漏斗。
-5. 评价只挂在**已完成**订单上，rating 分布由商品 quality_score 驱动，做情感/词频分析时有天然标签。
+3. **状态机**：待付款 →（支付）→ 已发货 →（签收）→ 已完成；任何阶段可转为已取消。时间链字段的**日期**满足 `created_at ≤ paid_at ≤ shipped_at ≤ delivered_at`，未到达的节点为 NULL；**时刻**层面约 21% 已发货订单存在 `shipped_at` 早于同日 `paid_at` 的错位（见第 7 节已知问题），构造"支付到发货时长"类指标时需按日期为粒度。
+4. **行为-交易闭环**：约 6 成 user_events 落在同客户 + 同商品成交订单的下单前 7 天内，可构造"浏览→加购→购买"漏斗；其余为未转化行为，漏斗分母应取全部浏览事件。
+5. 评价只挂在**已完成**订单上，每单**至多一条**，rating 分布由商品 quality_score 驱动，做情感/词频分析时有天然标签。
 
 ## 4. 关键业务术语
 

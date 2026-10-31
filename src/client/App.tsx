@@ -327,13 +327,13 @@ function HomePage(): ReactElement {
           <span className="dsd-eyebrow">DATA SCIENCE WORKBENCH</span>
           <h1>数据科学示例</h1>
           <p>
-            一个运行在 DSH 中的数据科学工作台示例。它负责准备本机分析环境：
-            检查 Python、在工作目录中创建独立虚拟环境，并按清单安装常用分析库。
+            面向电商数据分析的工作台：检查本机 Python 环境、在工作目录中创建独立虚拟环境、
+            按清单安装常用分析库，并附带一套可直接查询的多表电商数据。
           </p>
           <div className="dsd-hero-meta">
             <span className="dsd-pill">Python 3.12</span>
             <span className="dsd-pill">.venv 隔离环境</span>
-            <span className="dsd-pill">依赖清单驱动</span>
+            <span className="dsd-pill">电商示例数据</span>
           </div>
         </div>
         <div className="dsd-hero-art">
@@ -378,12 +378,12 @@ function HomePage(): ReactElement {
         <div className="dsd-feature">
           <div className="dsd-feature-title">
             <span className="dsd-feature-icon">
-              <IconChevron direction="down" size={15} />
+              <IconDatabase size={15} />
             </span>
-            可扩展
+            示例数据
           </div>
           <p className="dsd-feature-body">
-            当前提供环境准备能力，后续的数据分析功能会作为新的菜单逐步加入。
+            内置九张表的电商数据集，支持逐表预览并在线执行 SELECT 查询。
           </p>
         </div>
       </div>
@@ -712,11 +712,233 @@ function EnvironmentPage({
   )
 }
 
+/** ER 图节点：手绘固定坐标，viewBox 920×620。 */
+interface GraphNode {
+  name: string
+  label: string
+  domain: 'user' | 'product' | 'trade' | 'marketing' | 'content'
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** 九张表在三列布局中的位置：左列用户域，中列交易域，右列商品 + 营销域。 */
+const GRAPH_NODES: GraphNode[] = [
+  { name: 'customers', label: '客户表', domain: 'user', x: 24, y: 60, w: 164, h: 84 },
+  { name: 'user_events', label: '行为事件表', domain: 'content', x: 24, y: 260, w: 164, h: 70 },
+  { name: 'orders', label: '订单表', domain: 'trade', x: 280, y: 40, w: 200, h: 96 },
+  { name: 'order_items', label: '订单明细表', domain: 'trade', x: 280, y: 200, w: 200, h: 74 },
+  { name: 'reviews', label: '评价表', domain: 'content', x: 280, y: 360, w: 200, h: 70 },
+  { name: 'categories', label: '类目表', domain: 'product', x: 600, y: 40, w: 200, h: 70 },
+  { name: 'products', label: '商品表', domain: 'product', x: 600, y: 190, w: 200, h: 84 },
+  { name: 'payments', label: '支付表', domain: 'trade', x: 600, y: 350, w: 200, h: 70 },
+  { name: 'coupons', label: '优惠券表', domain: 'marketing', x: 600, y: 500, w: 200, h: 70 },
+]
+
+/** 域配色：与侧边栏、卡片保持同一套色系。 */
+const DOMAIN_COLORS: Record<GraphNode['domain'], string> = {
+  user: '#2563eb',
+  product: '#0d9488',
+  trade: '#b45309',
+  marketing: '#7c3aed',
+  content: '#be123c',
+}
+
+/** 域名称。 */
+const DOMAIN_LABELS: Record<GraphNode['domain'], string> = {
+  user: '用户域',
+  product: '商品域',
+  trade: '交易域',
+  marketing: '营销域',
+  content: '内容域',
+}
+
+/** ER 图的一条边：path 为手绘走线，label 为基数标注。 */
+interface GraphEdge {
+  d: string
+  label: string
+  labelX: number
+  labelY: number
+}
+
+/** 全部边按主干关系绘制；评价 → 商品 / 客户的次要边放到下方关系表。 */
+const GRAPH_EDGES: GraphEdge[] = [
+  { d: 'M188,100 L280,88', label: '1 : N', labelX: 234, labelY: 82 },
+  { d: 'M100,144 L100,260', label: '1 : N', labelX: 108, labelY: 206 },
+  { d: 'M340,136 L340,200', label: '1 : 1..N', labelX: 348, labelY: 172 },
+  { d: 'M480,237 L600,232', label: 'N : 1', labelX: 540, labelY: 226 },
+  { d: 'M680,190 L680,110', label: 'N : 1', labelX: 688, labelY: 154 },
+  { d: 'M800,60 L842,60 L842,92 L800,92', label: '父 : 子', labelX: 848, labelY: 80 },
+  { d: 'M480,120 L540,120 L540,385 L600,385', label: '1 : 0..1', labelX: 548, labelY: 260 },
+  { d: 'M480,95 L560,95 L560,535 L600,535', label: 'N : 0..1', labelX: 568, labelY: 320 },
+  { d: 'M280,115 L245,115 L245,395 L280,395', label: '1 : 0..1', labelX: 200, labelY: 300 },
+  { d: 'M700,274 L700,320 L520,320 L520,395 L480,395', label: 'N : 1', labelX: 528, labelY: 314 },
+  { d: 'M188,120 L215,120 L215,410 L280,410', label: 'N : 1', labelX: 188, labelY: 425 },
+]
+
+/** 表关系图（ER）：九张表的键关系、基数与实时行数。 */
+function RelationGraph({ dataset }: { dataset: DatasetInfo | null }): ReactElement {
+  const rowCount = (name: string): string => {
+    const table = dataset?.tables.find(item => item.name === name)
+    return table === undefined ? '—' : `${table.rowCount.toLocaleString()} 行`
+  }
+  const columnCount = (name: string): string => {
+    const table = dataset?.tables.find(item => item.name === name)
+    return table === undefined ? '' : `${table.columns.length} 列`
+  }
+
+  return (
+    <div className="dsd-graph-scroll">
+      <svg className="dsd-graph" viewBox="0 0 920 620" role="img" aria-label="电商数据集表关系图">
+        <defs>
+          <marker id="dsd-arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M1,1 L7,4 L1,7" fill="none" stroke="#8ba3c0" strokeWidth="1.2" />
+          </marker>
+        </defs>
+
+        {GRAPH_EDGES.map(edge => (
+          <g key={edge.d}>
+            <path
+              d={edge.d}
+              className="dsd-graph-edge"
+              markerEnd="url(#dsd-arrow)"
+            />
+            <text className="dsd-graph-label" x={edge.labelX} y={edge.labelY}>
+              {edge.label}
+            </text>
+          </g>
+        ))}
+
+        {GRAPH_NODES.map(node => (
+          <g key={node.name}>
+            <rect
+              x={node.x}
+              y={node.y}
+              width={node.w}
+              height={node.h}
+              rx="8"
+              className="dsd-graph-node"
+              style={{ stroke: DOMAIN_COLORS[node.domain] }}
+            />
+            <text className="dsd-graph-name" x={node.x + 12} y={node.y + 24}>
+              {node.name}
+            </text>
+            <text className="dsd-graph-sub" x={node.x + 12} y={node.y + 42}>
+              {node.label}
+            </text>
+            <text
+              className="dsd-graph-count"
+              x={node.x + node.w - 12}
+              y={node.y + 24}
+              textAnchor="end"
+            >
+              {rowCount(node.name)}
+            </text>
+            <text
+              className="dsd-graph-sub"
+              x={node.x + node.w - 12}
+              y={node.y + 42}
+              textAnchor="end"
+            >
+              {columnCount(node.name)}
+            </text>
+            <text
+              className="dsd-graph-domain"
+              x={node.x + 12}
+              y={node.y + node.h - 12}
+              style={{ fill: DOMAIN_COLORS[node.domain] }}
+            >
+              {DOMAIN_LABELS[node.domain]}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/** 知识图谱的域卡片（对应 README 第 5 节的五个业务域）。 */
+const KNOWLEDGE_DOMAINS: { domain: GraphNode['domain']; entities: string[]; note: string }[] = [
+  { domain: 'user', entities: ['客户 Customer', '省市 · 会员等级'], note: '3,000 名会员，10 省 23 市，四档等级' },
+  { domain: 'product', entities: ['类目 Category', '商品 Product'], note: '6 个一级 × 4 个二级类目，600 个商品' },
+  { domain: 'trade', entities: ['订单 Order', '明细 OrderItem', '支付 Payment'], note: '19,669 订单 / 36,907 明细 / 19,181 支付' },
+  { domain: 'marketing', entities: ['优惠券 Coupon'], note: '8 张券，4,189 单使用（21.3%）' },
+  { domain: 'content', entities: ['评价 Review', '行为事件 Event'], note: '5,976 条评价 / 76,905 条埋点' },
+]
+
+/** 知识图谱的三元组关系：源实体 - 关系 → 目标实体，附数据表现。 */
+const KNOWLEDGE_TRIPLES: { source: string; relation: string; target: string; cardinality: string; check: string }[] = [
+  { source: '客户', relation: '下单', target: '订单', cardinality: '1 : N', check: '3,000 客户产生 19,669 笔订单' },
+  { source: '订单', relation: '包含', target: '订单明细', cardinality: '1 : 1..4', check: '每单 1~4 行明细，无空单' },
+  { source: '订单明细', relation: '对应', target: '商品', cardinality: 'N : 1', check: '36,907 行明细指向 600 个商品' },
+  { source: '商品', relation: '归属', target: '二级类目', cardinality: 'N : 1', check: '600 个商品全部挂在二级类目' },
+  { source: '二级类目', relation: '归属', target: '一级类目', cardinality: 'N : 1', check: '24 个二级类目分属 6 个一级类目' },
+  { source: '订单', relation: '使用', target: '优惠券', cardinality: 'N : 0..1', check: '4,189 单使用优惠券（占 21.3%）' },
+  { source: '订单', relation: '支付', target: '支付单', cardinality: '1 : 0..1', check: '仅 488 单待付款无支付，其余恰好 1 条' },
+  { source: '订单', relation: '产生', target: '评价', cardinality: '1 : 0..1', check: '每单最多 1 条；17,292 单已完成中 5,976 单有评价' },
+  { source: '评价', relation: '指向', target: '商品 · 客户', cardinality: 'N : 1', check: '每条评价都对应有效商品与客户' },
+  { source: '客户', relation: '产生', target: '行为事件', cardinality: '1 : N', check: '76,905 条浏览 / 加购埋点' },
+  { source: '行为事件', relation: '指向', target: '商品', cardinality: 'N : 1', check: '全部指向有效商品' },
+  { source: '客户', relation: '持有', target: '会员等级', cardinality: '1 : 1', check: '普通 / 白银 / 黄金 / 钻石' },
+]
+
+/** 知识图谱：五个业务域 + 实体三元组关系。 */
+function KnowledgeGraph(): ReactElement {
+  return (
+    <>
+      <div className="dsd-domain-grid">
+        {KNOWLEDGE_DOMAINS.map(item => (
+          <div
+            className="dsd-domain-card"
+            key={item.domain}
+            style={{ borderTopColor: DOMAIN_COLORS[item.domain] }}
+          >
+            <div className="dsd-domain-title" style={{ color: DOMAIN_COLORS[item.domain] }}>
+              {DOMAIN_LABELS[item.domain]}
+            </div>
+            {item.entities.map(entity => (
+              <div className="dsd-domain-entity" key={entity}>{entity}</div>
+            ))}
+            <div className="dsd-domain-note">{item.note}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="dsd-grid-scroll dsd-triple-scroll">
+        <table className="dsd-grid">
+          <thead>
+            <tr>
+              <th>源实体</th>
+              <th>关系</th>
+              <th>目标实体</th>
+              <th>基数</th>
+              <th>数据表现</th>
+            </tr>
+          </thead>
+          <tbody>
+            {KNOWLEDGE_TRIPLES.map(triple => (
+              <tr key={`${triple.source}-${triple.relation}-${triple.target}`}>
+                <td>{triple.source}</td>
+                <td className="dsd-triple-relation">{triple.relation}</td>
+                <td>{triple.target}</td>
+                <td className="dsd-mono">{triple.cardinality}</td>
+                <td className="is-text" title={triple.check}>{triple.check}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
 /** 概览页的关键业务术语（口径来自 src/data/README.md）。 */
 const DATASET_TERMS: { term: string; definition: string; sql: string }[] = [
   { term: 'GMV', definition: '已完成+已发货订单的实付合计', sql: "SUM(total_amount) WHERE order_status IN ('已完成','已发货')" },
   { term: '客单价', definition: 'GMV / 订单数', sql: 'SUM(total_amount) / COUNT(*)' },
-  { term: '件单价', definition: 'GMV / 销售件数', sql: 'SUM(total) / SUM(quantity)' },
+  { term: '件单价', definition: 'GMV / 销售件数', sql: 'SUM(subtotal) / SUM(quantity)' },
   { term: '连带率', definition: '平均每单商品件数', sql: 'SUM(quantity) / COUNT(DISTINCT order_id)' },
   { term: '复购率', definition: '购买 ≥2 次的客户占比', sql: '按 customer_id 分组计数' },
   { term: '退款率', definition: '已退款支付单占比', sql: "payments.payment_status = '已退款'" },
@@ -724,15 +946,6 @@ const DATASET_TERMS: { term: string; definition: string; sql: string }[] = [
   { term: '动销率', definition: '有销量的商品占比', sql: 'order_items 去重 product_id / products' },
   { term: '毛利率', definition: '(成交额-成本) / 成交额', sql: 'subtotal - cost×quantity' },
   { term: 'RFM', definition: '最近消费 / 频率 / 金额三维分群', sql: '基于 orders 按客户聚合' },
-]
-
-/** 概览页的表间关系要点（来自 src/data/README.md 第 3 节）。 */
-const DATASET_RELATIONS: string[] = [
-  'orders ↔ products 是多对多，靠 order_items 连接，分析销量必须 JOIN 明细表',
-  '金额链路：orders.total_amount = Σ(order_items.subtotal) + freight_amount；Σ(item_discount) = orders.discount_amount',
-  '状态机：待付款 →（支付）→ 已发货 →（签收）→ 已完成，任何阶段可转为已取消',
-  '行为-交易闭环：user_events（浏览/加购）发生在 orders.created_at 之前，可构造「浏览→加购→购买」漏斗',
-  '评价只挂在已完成订单上，rating 分布由商品 quality_score 驱动',
 ]
 
 /** 示例数据概览页：整体介绍电商数据集（内容基于 src/data/README.md）。 */
@@ -753,7 +966,7 @@ function DatasetOverviewPage({
         <div>
           <h2>电商分析数据集</h2>
           <p className="dsd-page-sub">
-            DataClerk 式确定性生成的多表关联电商数据，L1~L5 各层分析示例的统一数据源。
+            覆盖类目、商品、客户、订单、支付、评价与行为埋点的多表关联电商数据，可直接用于取数分析。
           </p>
         </div>
         <div className="dsd-toolbar">
@@ -770,26 +983,26 @@ function DatasetOverviewPage({
         <section className="dsd-card dsd-env-section">
           <SectionHead
             index="01"
-            title="生成机制"
-            subtitle="同一份生成脚本在任何时间、任何机器上产出字节级一致的数据库"
-            status={<Flag ok>种子 42</Flag>}
+            title="数据范围与口径"
+            subtitle="时间跨度、覆盖维度与金额、状态的统一定义"
+            status={<Flag ok>2024-01-01 起</Flag>}
           />
           <div className="dsd-kv-grid">
             <div className="dsd-kv-row dsd-kv-wide">
-              <span className="dsd-kv-key">显式随机源</span>
-              <span className="dsd-kv-value">全程只用 random.Random(42)，不触碰全局 random</span>
+              <span className="dsd-kv-key">时间范围</span>
+              <span className="dsd-kv-value">2024-01-01 ~ 2025-06-15，含完整大促与季节性波动</span>
             </div>
             <div className="dsd-kv-row dsd-kv-wide">
-              <span className="dsd-kv-key">锚定日期</span>
-              <span className="dsd-kv-value">所有日期相对固定的 2025-06-15 生成，不读系统时钟</span>
+              <span className="dsd-kv-key">覆盖维度</span>
+              <span className="dsd-kv-value">10 省 23 市、四档会员等级、四个下单渠道（APP / 小程序 / 网页 / 线下）</span>
             </div>
             <div className="dsd-kv-row dsd-kv-wide">
-              <span className="dsd-kv-key">生成顺序</span>
-              <span className="dsd-kv-value">类目 → 客户 → 商品 → 订单 → 支付 → 评价 → 行为事件</span>
+              <span className="dsd-kv-key">金额口径</span>
+              <span className="dsd-kv-value">实付金额 = 明细小计合计 + 运费；全部金额保留两位小数</span>
             </div>
             <div className="dsd-kv-row dsd-kv-wide">
-              <span className="dsd-kv-key">金额精度</span>
-              <span className="dsd-kv-value">金额一律保留两位小数；两次生成 SHA256 相同（c957ca93…）</span>
+              <span className="dsd-kv-key">状态口径</span>
+              <span className="dsd-kv-value">待付款 / 已发货 / 已完成 / 已取消，取消可发生在任意阶段</span>
             </div>
           </div>
         </section>
@@ -838,28 +1051,37 @@ function DatasetOverviewPage({
             </div>
           </div>
           <div className="dsd-link-note">
-            埋入的模式：双 11、618 大促峰值，春节低谷，周末效应，缓慢增长趋势；约 1.2% 批发型异常订单
-            （单件商品数量 30~200）与 0.5% 价格异常订单（单价 ×10）——后两者是 L2 异常检测的靶子。
+            数据包含双 11、618 大促峰值，春节低谷与周末效应，整体呈缓慢增长；另有约 1.2% 批发型大额订单
+            （单件商品数量 30~200）与 0.5% 高单价异常订单（单价约为常规的 10 倍），适合作为异常检测的练习样本。
           </div>
         </section>
 
         <section className="dsd-card dsd-env-section">
           <SectionHead
             index="03"
-            title="表间业务关系"
-            subtitle="客户下单 → 订单包含明细 → 明细对应商品；订单关联支付、评价与优惠券"
-            status={null}
+            title="表关系图"
+            subtitle="九张表的主干键关系与基数，节点标注当前行数与列数"
+            status={<Flag ok>11 条表间关联</Flag>}
           />
-          <ul className="dsd-fact-list">
-            {DATASET_RELATIONS.map(relation => (
-              <li key={relation}>{relation}</li>
-            ))}
-          </ul>
+          <RelationGraph dataset={dataset} />
+          <div className="dsd-link-note">
+            节点按业务域配色，面板较窄时可横向滚动查看完整图谱。评价同时关联商品与客户，图中以订单主链路呈现。
+          </div>
         </section>
 
         <section className="dsd-card dsd-env-section">
           <SectionHead
             index="04"
+            title="知识图谱"
+            subtitle="按用户 / 商品 / 交易 / 营销 / 内容五个业务域组织的实体关系"
+            status={null}
+          />
+          <KnowledgeGraph />
+        </section>
+
+        <section className="dsd-card dsd-env-section">
+          <SectionHead
+            index="05"
             title="关键业务术语"
             subtitle="常用分析口径与 SQL 示意"
             status={null}
@@ -887,8 +1109,8 @@ function DatasetOverviewPage({
         </section>
 
         <div className="dsd-alert dsd-alert-warn">
-          已知问题（当前 build）：约 20% 订单存在 shipped_at 时刻早于同日 paid_at 的时刻错位（日期粒度正确），
-          系生成器中发货时钟独立随机所致。当前数据库保持原样，各层分析报告均基于此 build 生成。
+          口径提示：约 21% 订单的发货时刻早于同日支付时刻，日期信息本身无误。涉及「支付到发货时长」的分析，
+          建议按日粒度统计。
         </div>
 
         {dataset !== null ? (

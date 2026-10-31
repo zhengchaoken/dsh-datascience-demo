@@ -784,11 +784,109 @@ export const APP_CSS = `
 .dsd-column-type { flex: 0 0 70px; color: #96a5bc; font-size: 10.5px; }
 .dsd-column-comment { flex: 1 1 auto; min-width: 0; color: var(--dsd-muted); }
 
+/* ---------- relation graph ---------- */
+.dsd-graph-scroll {
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.dsd-graph {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+.dsd-graph-edge {
+  fill: none;
+  stroke: #9fb4d0;
+  stroke-width: 1.2;
+}
+.dsd-graph-label {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 9.5px;
+  fill: var(--dsd-muted);
+}
+.dsd-graph-node {
+  fill: #fbfdff;
+  stroke-width: 1.4;
+}
+.dsd-graph-name {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--dsd-ink);
+}
+.dsd-graph-sub {
+  font-size: 10px;
+  fill: var(--dsd-muted);
+}
+.dsd-graph-count {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 9.5px;
+  fill: var(--dsd-accent);
+}
+.dsd-graph-domain { font-size: 9px; }
+
+/* 知识图谱：域卡片 + 三元组表 */
+.dsd-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.dsd-domain-card {
+  border: 1px solid var(--dsd-line);
+  border-top: 3px solid var(--dsd-accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--dsd-surface);
+}
+.dsd-domain-title {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.dsd-domain-entity {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #2c3a4f;
+}
+.dsd-domain-note {
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--dsd-muted);
+}
+.dsd-triple-scroll { margin-top: 12px; }
+.dsd-triple-relation { color: var(--dsd-accent); }
+
+/* 滚动条统一样式：默认深色滚动条在浅色面板里过于突兀 */
+.dsd-grid-scroll::-webkit-scrollbar,
+.dsd-graph-scroll::-webkit-scrollbar,
+.dsd-result-scroll::-webkit-scrollbar,
+.dsd-column-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dsd-grid-scroll::-webkit-scrollbar-thumb,
+.dsd-graph-scroll::-webkit-scrollbar-thumb,
+.dsd-result-scroll::-webkit-scrollbar-thumb,
+.dsd-column-list::-webkit-scrollbar-thumb {
+  background: #c7d5e8;
+  border-radius: 4px;
+}
+.dsd-grid-scroll::-webkit-scrollbar-track,
+.dsd-graph-scroll::-webkit-scrollbar-track,
+.dsd-result-scroll::-webkit-scrollbar-track,
+.dsd-column-list::-webkit-scrollbar-track {
+  background: #f2f6fc;
+}
+
 @media (max-width: 1100px) {
   .dsd-hero-art { display: none; }
 }
 @media (max-width: 760px) {
   .dsd-features, .dsd-kv-grid, .dsd-package-list { grid-template-columns: minmax(0, 1fr); }
+  .dsd-domain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dsd-main { padding: 20px 18px 32px; }
 }
 `
