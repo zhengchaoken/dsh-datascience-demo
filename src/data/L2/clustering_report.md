@@ -4,20 +4,17 @@
 - **样本量**：2493 个客户
 - **方法**：K-Means vs Ward 层次聚类 vs 谱聚类，K=4，轮廓系数评估
 
-<a id="toc"></a>
 ## 目录
 
-- [1 RFM 特征构建](#sec-1)
-- [2 K-Means 聚类（基准）](#sec-2)
-- [3 层次聚类（Ward linkage）](#sec-3)
-- [4 谱聚类（SpectralClustering）](#sec-4)
-- [5 三种方法对比](#sec-5)
-- [6 分群画像（基于 K-Means 结果）](#sec-6)
-- [7 结论](#sec-7)
+- 1 RFM 特征构建
+- 2 K-Means 聚类（基准）
+- 3 层次聚类（Ward linkage）
+- 4 谱聚类（SpectralClustering）
+- 5 三种方法对比
+- 6 分群画像（基于 K-Means 结果）
+- 7 结论
 
 ---
-<a id="sec-1"></a>
-
 # 1. RFM 特征构建
 
 基于 orders 表（已完成+已发货）按客户聚合三维度：
@@ -50,19 +47,15 @@ GROUP BY customer_id;
 
 **解释：** RFM 右偏明显（少数高价值客户贡献大部分金额），聚类前取 log1p 压缩长尾再标准化。
 
-<a id="sec-2"></a>
-
 # 2. K-Means 聚类（基准）
 
 K = 4，轮廓系数 = 0.3328。
-
-<a id="sec-3"></a>
 
 # 3. 层次聚类（Ward linkage）
 
 Ward 法每次合并使簇内方差增量最小的两簇，产生一棵完整的凝聚树（dendrogram），可在任意高度切割得到不同簇数。
 
-![Ward Dendrogram | Ward 层次聚类树状图(截取最后30次合并)](images_clustering/3_1_dendrogram.png)
+![Ward Dendrogram | Ward 层次聚类树状图(截取最后30次合并)](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/3_1_dendrogram.png)
 
 **中文说明：** 纵轴为合并距离。距离跳跃最大的位置是合理的切割点：在跳跃上方横切一刀，切口数即为簇数。括号内为叶簇包含的客户数。
 
@@ -91,15 +84,11 @@ Ward 法每次合并使簇内方差增量最小的两簇，产生一棵完整的
 
 切割为 K=4 簇，轮廓系数 = 0.3010。
 
-<a id="sec-4"></a>
-
 # 4. 谱聚类（SpectralClustering）
 
 谱聚类先构建样本相似度图（RBF 核），对图拉普拉斯做特征分解，再在低维谱嵌入上跑 K-Means。能发现非凸形状的簇，但需构造 n×n 亲和矩阵，计算量为 O(n²~n³)，本数据 2493 客户可承受。
 
 K = 4，轮廓系数 = 0.2745。
-
-<a id="sec-5"></a>
 
 # 5. 三种方法对比
 
@@ -111,8 +100,6 @@ K = 4，轮廓系数 = 0.2745。
 
 **解释：** 轮廓系数越接近 1 越好。K-Means 假设球形等方差簇，在标准化 RFM 上通常是强基准；层次聚类的优势是给出全层级结构、可解释切割；谱聚类适合簇边界非凸的情形。RFM 经 log 变换后接近凸结构，三者差距通常不大——此时选最简单、最易复现的 K-Means 即可。
 
-<a id="sec-6"></a>
-
 # 6. 分群画像（基于 K-Means 结果）
 
 |   Cluster |   Recency |   Frequency |    Monetary |      客户数 |
@@ -122,11 +109,11 @@ K = 4，轮廓系数 = 0.2745。
 |    2.0000 |  106.4973 |      5.6083 |  40442.8044 | 771.0000 |
 |    3.0000 |   10.1713 |      5.0714 |  23118.5068 | 420.0000 |
 
-![Cluster Profiles | 分群画像热力图](images_clustering/6_1_profile_heatmap.png)
+![Cluster Profiles | 分群画像热力图](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/6_1_profile_heatmap.png)
 
 **中文说明：** 颜色=该簇在维度上的标准化均值（红高蓝低），格内数字=原始均值。
 
-![Cluster Radar | 分群画像雷达图](images_clustering/6_2_radar.png)
+![Cluster Radar | 分群画像雷达图](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/6_2_radar.png)
 
 **中文说明：** 雷达图三个轴为标准化后的 R/F/M。Recency 轴数值**越小**代表越活跃（图上越靠近中心越活跃），F/M 轴数值越大越好。
 
@@ -138,8 +125,6 @@ K = 4，轮廓系数 = 0.2745。
 | 簇 1 |   580 | 普通/低频客户 | 促活：签到、低价引流品          |
 | 簇 2 |   771 | 高价值沉睡客户 | 唤醒：大额券、电话回访、流失预警     |
 | 簇 3 |   420 | 普通/低频客户 | 促活：签到、低价引流品          |
-
-<a id="sec-7"></a>
 
 # 7. 结论
 

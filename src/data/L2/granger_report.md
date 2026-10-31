@@ -4,22 +4,19 @@
 - **序列长度**：532 天（2024-01-01 ~ 2025-06-15）
 - **方法**：Granger 因果双向检验（滞后 1-14）+ VAR 脉冲响应
 
-<a id="toc"></a>
 ## 目录
 
-- [1 日频序列构建](#sec-1)
-- [2 预处理：对数化与一阶差分](#sec-2)
-- [3 Granger 因果检验（滞后 1-14 天）](#sec-3)
-  - [3.1 gmv 与 n_orders 的双向检验](#sec-3-1)
-  - [3.2 gmv 与 n_customers 的双向检验](#sec-3-2)
-  - [3.3 n_orders 与 n_customers 的双向检验](#sec-3-3)
-- [4 VAR 模型与脉冲响应](#sec-4)
-- [5 大促期间的因果方向变化](#sec-5)
-- [6 结论](#sec-6)
+- 1 日频序列构建
+- 2 预处理：对数化与一阶差分
+- 3 Granger 因果检验（滞后 1-14 天）
+  - 3.1 gmv 与 n_orders 的双向检验
+  - 3.2 gmv 与 n_customers 的双向检验
+  - 3.3 n_orders 与 n_customers 的双向检验
+- 4 VAR 模型与脉冲响应
+- 5 大促期间的因果方向变化
+- 6 结论
 
 ---
-<a id="sec-1"></a>
-
 # 1. 日频序列构建
 
 从 orders 表按日聚合三条业务序列：**日 GMV**（gmv）、**日订单数**（n_orders）、**日活跃客户数**（n_customers）。口径：已完成+已发货订单；缺失日期补 0。
@@ -50,11 +47,9 @@ ORDER BY ds;
 | 75%   |  261269.3700 |    38.0000 |       38.0000 |
 | max   | 2304069.2700 |   123.0000 |      119.0000 |
 
-![Daily Series | 日频业务序列](images_granger/1_1_daily_series.png)
+![Daily Series | 日频业务序列](F:\code\dsh-datascience-demo\src\data\L2\images_granger/1_1_daily_series.png)
 
 **中文说明：** 从上到下依次为日 GMV、日订单数、日活跃客户数。可看到 618、双 11 大促峰值与春节低谷。三条序列形态高度相似，提示它们之间存在领先-滞后或共因关系——这正是 Granger 检验要诊断的问题。
-
-<a id="sec-2"></a>
 
 # 2. 预处理：对数化与一阶差分
 
@@ -71,13 +66,9 @@ GMV 右偏严重且量级远大于计数序列，取 log1p 后再做一阶差分
 | 75%   |   0.4164 |     0.1542 |        0.1542 |
 | max   |   2.7403 |     0.9491 |        0.9373 |
 
-<a id="sec-3"></a>
-
 # 3. Granger 因果检验（滞后 1-14 天）
 
 Granger 因果的定义：若 X 的过去值能显著提高对 Y 的预测能力（在控制 Y 自身过去后），则称「X 是 Y 的 Granger 原因」。对三对变量做**双向**检验，滞后阶数 1~14，报告各滞后阶的 F 检验 p 值。
-
-<a id="sec-3-1"></a>
 
 ## 3.1 gmv 与 n_orders 的双向检验
 
@@ -100,8 +91,6 @@ Granger 因果的定义：若 X 的过去值能显著提高对 Y 的预测能力
 
 **解读：** gmv → n_orders 最小 p 值 = 1.14e-03（滞后 10）；反方向最小 p 值 = 5.89e-08（滞后 14）。双向均显著，存在反馈环；
 
-<a id="sec-3-2"></a>
-
 ## 3.2 gmv 与 n_customers 的双向检验
 
 |    滞后阶数 |   gmv → n_customers |   n_customers → gmv |
@@ -122,8 +111,6 @@ Granger 因果的定义：若 X 的过去值能显著提高对 Y 的预测能力
 | 14.0000 |              0.0032 |              0.0000 |
 
 **解读：** gmv → n_customers 最小 p 值 = 1.23e-03（滞后 10）；反方向最小 p 值 = 2.31e-08（滞后 14）。双向均显著，存在反馈环；
-
-<a id="sec-3-3"></a>
 
 ## 3.3 n_orders 与 n_customers 的双向检验
 
@@ -146,11 +133,9 @@ Granger 因果的定义：若 X 的过去值能显著提高对 Y 的预测能力
 
 **解读：** n_orders → n_customers 最小 p 值 = 6.16e-02（滞后 6）；反方向最小 p 值 = 4.14e-02（滞后 6）。仅后者显著，为单向因果；
 
-![Granger p-values Heatmap | Granger 因果 p 值热力图](images_granger/3_1_granger_pvals.png)
+![Granger p-values Heatmap | Granger 因果 p 值热力图](F:\code\dsh-datascience-demo\src\data\L2\images_granger/3_1_granger_pvals.png)
 
 **中文说明：** 颜色越深表示 p 值越小（因果证据越强）。-log10(p) > 2 对应 p < 0.01。
-
-<a id="sec-4"></a>
 
 # 4. VAR 模型与脉冲响应
 
@@ -166,7 +151,7 @@ VAR(p=14), AIC=-12.26
 Model:                         VAR
 Method:                        OLS
 Date:           Sat, 31, Oct, 2026
-Time:                     16:19:08
+Time:                     21:27:17
 --------------------------------------------------------------------
 No. of Equations:         3.00000    BIC:                   -11.2040
 Nobs:                     517.000    HQIC:                  -11.8486
@@ -176,13 +161,11 @@ AIC:                     -12.2639    Det(Omega_mle):     3.71749e-06
 ...(截断)
 ```
 
-![Impulse Response Functions | 脉冲响应函数](images_granger/4_1_irf.png)
+![Impulse Response Functions | 脉冲响应函数](F:\code\dsh-datascience-demo\src\data\L2\images_granger/4_1_irf.png)
 
 **中文说明：** 每张子图：行=被冲击的变量，列=响应变量；横轴=冲击后的天数。例如 (n_customers 行, gmv 列) 表示「日活跃客户数受冲击后，日 GMV 的后续响应路径」。置信带跨 0 则响应不显著。
 
 **解释：** 活跃客户数冲击对 GMV 的响应若持续多日为正，说明「拉新/促活」对 GMV 有滞后释放效应；订单数对 GMV 的响应通常在 1-2 天内衰减，因为订单直接计入当日 GMV（部分为机械性关系）。
-
-<a id="sec-5"></a>
 
 # 5. 大促期间的因果方向变化
 
@@ -192,8 +175,6 @@ AIC:                     -12.2639    Det(Omega_mle):     3.71749e-06
 |------|------|--------|----------|------|
 
 **解释：** 平销期通常是「活跃客户数 → GMV」方向更显著（客户先活跃、GMV 后增长，需求驱动）；大促窗口由于补贴/广告集中投放，GMV 峰值与客户活跃几乎同步爆发，因果滞后缩短甚至双向显著——此时 Granger 意义上的「领先指标」失效，预测大促 GMV 不能依赖常规领先指标，需直接建模大促事件虚拟变量。注意：窗口样本仅约 20 天，检验功效有限，结论只作定性参考。
-
-<a id="sec-6"></a>
 
 # 6. 结论
 

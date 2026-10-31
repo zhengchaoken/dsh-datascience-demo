@@ -81,6 +81,7 @@ def setup_chinese_font() -> str:
 
 
 FONT_NAME = setup_chinese_font()
+print("[字体] 使用: %s" % FONT_NAME)
 sns.set_style("whitegrid")
 plt.rcParams["font.sans-serif"] = [FONT_NAME, "DejaVu Sans"]
 plt.rcParams["figure.dpi"] = 110

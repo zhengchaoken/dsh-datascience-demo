@@ -4,19 +4,16 @@
 - **样本量**：18133 个已支付订单，近似真值异常 292 个（1.61%）
 - **方法**：IsolationForest + LOF（无监督），规则近似真值评估 precision/recall
 
-<a id="toc"></a>
 ## 目录
 
-- [1 数据与真值标签](#sec-1)
-- [2 订单级特征工程](#sec-2)
-- [3 IsolationForest](#sec-3)
-- [4 LOF（局部离群因子）](#sec-4)
-- [5 模型对比与可视化](#sec-5)
-- [6 结论与建议](#sec-6)
+- 1 数据与真值标签
+- 2 订单级特征工程
+- 3 IsolationForest
+- 4 LOF（局部离群因子）
+- 5 模型对比与可视化
+- 6 结论与建议
 
 ---
-<a id="sec-1"></a>
-
 # 1. 数据与真值标签
 
 数据中被刻意注入两类异常：
@@ -37,8 +34,6 @@
 | 异常订单数（去重）       |   307 |
 
 **说明：** 该规则是注入模式的近似还原——价格异常的判定依赖类目价格带口径，个别「10 倍于低价商品」的注入单若未超过类目价格带 3 倍会被漏标，因此后文的 precision/recall 是对模型效果的近似评估。
-
-<a id="sec-2"></a>
 
 # 2. 订单级特征工程
 
@@ -64,8 +59,6 @@
 
 **标签分布：** 异常订单 292 / 总订单 18133（1.61%）
 
-<a id="sec-3"></a>
-
 # 3. IsolationForest
 
 **Python 代码：**
@@ -88,8 +81,6 @@ precision = TP / (TP + FP); recall = TP / (TP + FN)
 
 **解释：** IsolationForest 通过随机切分孤立样本，异常点更容易被孤立。contamination=0.02 略高于真实异常率（约 1.3%），用召回换覆盖。
 
-<a id="sec-4"></a>
-
 # 4. LOF（局部离群因子）
 
 | 指标        |       数值 |
@@ -103,8 +94,6 @@ precision = TP / (TP + FP); recall = TP / (TP + FN)
 
 **解释：** LOF 比较样本与其 k 近邻的局部密度。批发单（数量极大）处于稀疏区域，容易被 LOF 捕获；但 LOF 对全局稀疏异常（如孤立的 10 倍单价）在标准化空间中可能不如 IsolationForest 稳定。
 
-<a id="sec-5"></a>
-
 # 5. 模型对比与可视化
 
 | 模型              |   Precision |   Recall |     F1 |
@@ -114,15 +103,13 @@ precision = TP / (TP + FP); recall = TP / (TP + FN)
 
 **解释：** Precision 回答「报警的订单中有多少是真异常」，决定运营审核成本；Recall 回答「真异常抓住了多少」，决定风险敞口。业务上风控场景偏 Recall，审核资源紧张时偏 Precision。
 
-![Anomaly Scatter | 异常检测散点对比](images_anomaly/5_1_scatter.png)
+![Anomaly Scatter | 异常检测散点对比](F:\code\dsh-datascience-demo\src\data\L2\images_anomaly/5_1_scatter.png)
 
 **中文说明：** 三张图依次为近似真值、IsolationForest 预测、LOF 预测。红点=异常。批发单聚集在右侧（总件数 30+），价格异常单分布在上方（金额虚高）。
 
-![Anomaly Scatter (price view) | 价格视角异常散点](images_anomaly/5_2_scatter_price.png)
+![Anomaly Scatter (price view) | 价格视角异常散点](F:\code\dsh-datascience-demo\src\data\L2\images_anomaly/5_2_scatter_price.png)
 
 **中文说明：** 横轴换成订单内最高单价后，价格异常单（单价×10）在右侧明显离群，与批发单（右侧高件数）形成两个不同的异常簇——说明两类异常需要不同特征才能同时捕获。
-
-<a id="sec-6"></a>
 
 # 6. 结论与建议
 

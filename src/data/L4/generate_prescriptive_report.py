@@ -131,20 +131,14 @@ class Report:
         self.toc = []
         self.counter = [0, 0, 0]
 
-    @staticmethod
-    def _anchor(num):
-        return "sec-" + num.replace('.', '-')
-
     def _heading(self, level, title):
         num = ".".join(str(c) for c in self.counter[:level] if c > 0)
-        a = self._anchor(num)
-        self.parts.append('<a id="%s"></a>\n' % a)
         if level == 1:
             self.parts.append("# %s. %s\n" % (num, title))
         else:
             self.parts.append("%s %s %s\n" % ("#" * level, num, title))
         indent = "  " * (level - 1)
-        self.toc.append("%s- [%s %s](#%s)" % (indent, num, title, a))
+        self.toc.append("%s- %s %s" % (indent, num, title))
 
     def h1(self, t):
         self.counter[0] += 1; self.counter[1] = 0; self.counter[2] = 0
@@ -190,7 +184,7 @@ class Report:
         header.append("- **交互行数**：%d" % len(ratings))
         header.append("- **用户数**：%d" % ratings['userId'].nunique())
         header.append("- **商品数**：%d\n" % ratings['movieId'].nunique())
-        header.append('<a id="toc"></a>\n## 目录\n')
+        header.append('## 目录\n')
         header.append("\n".join(self.toc) + "\n\n---\n")
         with open(OUTPUT_MD, 'w', encoding='utf-8') as f:
             f.write("\n".join(header) + "\n".join(self.parts))

@@ -6,25 +6,23 @@
 - **样本**：训练 428 天 / 测试 90 天（含 618 段）
 - **预处理**：log1p 变换建模，expm1 还原评估
 
-<a id="toc"></a>
 ## 目录
 
-- [1 任务定义与方法](#sec-1)
-- [2 数据与特征工程](#sec-2)
-  - [2.1 序列构建 SQL](#sec-2-1)
-  - [2.2 特征清单](#sec-2-2)
-- [3 模型训练](#sec-3)
-  - [3.1 statsmodels QuantReg（线性分位数回归）](#sec-3-1)
-  - [3.2 LightGBM quantile](#sec-3-2)
-- [4 评估结果](#sec-4)
-  - [4.1 Pinball 损失（测试集，原始元尺度）](#sec-4-1)
-  - [4.2 80% 预测区间质量](#sec-4-2)
-  - [4.3 80% 预测区间带（测试期）](#sec-4-3)
-  - [4.4 覆盖率的时间稳定性（14 天滚动）](#sec-4-4)
-- [5 结论与讨论](#sec-5)
+- 1 任务定义与方法
+- 2 数据与特征工程
+  - 2.1 序列构建 SQL
+  - 2.2 特征清单
+- 3 模型训练
+  - 3.1 statsmodels QuantReg（线性分位数回归）
+  - 3.2 LightGBM quantile
+- 4 评估结果
+  - 4.1 Pinball 损失（测试集，原始元尺度）
+  - 4.2 80% 预测区间质量
+  - 4.3 80% 预测区间带（测试期）
+  - 4.4 覆盖率的时间稳定性（14 天滚动）
+- 5 结论与讨论
 
 ---
-<a id="sec-1"></a>
 
 # 1. 任务定义与方法
 
@@ -42,13 +40,9 @@ L_α(y, q) = α·(y−q)        当 y ≥ q（低估，按 α 罚）
 - **statsmodels QuantReg**：线性分位数回归，q_α(x) = x·β_α，可解释、无调参，但分位函数被限制为线性；
 - **LightGBM quantile**：`objective='quantile'` 的梯度提升树，分位函数可以是任意非线性分段函数，表达力强，但不同 α 独立训练，可能出现**分位数交叉**。
 
-<a id="sec-2"></a>
-
 # 2. 数据与特征工程
 
 目标变量为日 GMV（log1p 变换后建模，预测后 expm1 还原，与主报告一致——log 空间把乘法型波动变成加法型，分位数更稳定）。特征全部来自**预测日前一日及之前**的可得信息：
-
-<a id="sec-2-1"></a>
 
 ## 2.1 序列构建 SQL
 
@@ -61,8 +55,6 @@ WHERE order_status IN ('已完成', '已发货')
 GROUP BY day
 ORDER BY day;
 ```
-
-<a id="sec-2-2"></a>
 
 ## 2.2 特征清单
 
@@ -83,11 +75,7 @@ ORDER BY day;
 测试集 = 90（2025-03-18 ~ 2025-06-15，含 618 段）
 ```
 
-<a id="sec-3"></a>
-
 # 3. 模型训练
-
-<a id="sec-3-1"></a>
 
 ## 3.1 statsmodels QuantReg（线性分位数回归）
 
@@ -96,8 +84,6 @@ import statsmodels.api as sm
 model = sm.QuantReg(y_train, sm.add_constant(X_train))
 res = model.fit(q=0.1)   # 对 alpha = 0.1 / 0.5 / 0.9 各训一次
 ```
-
-<a id="sec-3-2"></a>
 
 ## 3.2 LightGBM quantile
 
@@ -108,11 +94,7 @@ model = LGBMRegressor(objective='quantile', alpha=0.1,
 model.fit(X_train, y_train)   # 对 alpha = 0.1 / 0.5 / 0.9 各训一次
 ```
 
-<a id="sec-4"></a>
-
 # 4. 评估结果
-
-<a id="sec-4-1"></a>
 
 ## 4.1 Pinball 损失（测试集，原始元尺度）
 
@@ -123,8 +105,6 @@ model.fit(X_train, y_train)   # 对 alpha = 0.1 / 0.5 / 0.9 各训一次
 
 **解释：** pinball 损失是该分位点预测质量的原生度量（α=0.5 时退化为 MAE/2），越小越好。
 
-<a id="sec-4-2"></a>
-
 ## 4.2 80% 预测区间质量
 
 | 模型                |   80%区间覆盖率 |   区间平均宽度(元) |   中位数MAE(元) |   中位数MAPE(%) |   分位数交叉次数 |
@@ -134,8 +114,6 @@ model.fit(X_train, y_train)   # 对 alpha = 0.1 / 0.5 / 0.9 各训一次
 
 **解释：** 名义覆盖率 0.80——覆盖率低于 0.80 说明区间偏窄（过度自信），高于 0.80 说明区间偏保守。分位数交叉（q0.1 > q0.5 或 q0.5 > q0.9）是各分位独立训练的常见副作用，线性 QuantReg 在本特征集上未出现交叉，LightGBM 出现少量交叉属预期现象（可后处理排序修正）。
 
-<a id="sec-4-3"></a>
-
 ## 4.3 80% 预测区间带（测试期）
 
 ![Interval Band | 80% 预测区间带对比](images_quantile/3_1_interval_band.png)
@@ -144,15 +122,11 @@ model.fit(X_train, y_train)   # 对 alpha = 0.1 / 0.5 / 0.9 各训一次
 
 **解释：** 测试期后段（6 月）是 618 大促，真实 GMV 冲出区间上界——区间只能覆盖「正常波动」，覆盖不了「营销脉冲」。线性 QuantReg 的区间宽度大致恒定（同方差假设的烙印），LightGBM 的宽度随近期波动（roll_std_7）自适应伸缩。
 
-<a id="sec-4-4"></a>
-
 ## 4.4 覆盖率的时间稳定性（14 天滚动）
 
 ![Rolling Coverage | 滚动覆盖率](images_quantile/3_2_rolling_coverage.png)
 
 **解释：** 覆盖率曲线在大促段（6 月上旬）明显下坠——峰值日连续冲出上界。这提示生产使用时应：大促窗口人工加宽区间（或叠加促销日历特征重训），日常窗口可直接采用模型区间。
-
-<a id="sec-5"></a>
 
 # 5. 结论与讨论
 

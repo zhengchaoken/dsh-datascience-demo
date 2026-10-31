@@ -58,6 +58,7 @@ CJK_FONT_FILE = _find_cjk_font_file()
 if CJK_FONT_FILE:
     fm.fontManager.addfont(CJK_FONT_FILE)
     _name = fm.FontProperties(fname=CJK_FONT_FILE).get_name()
+    print("[字体] 使用: %s" % _name)
     plt.rcParams['font.sans-serif'] = [_name, 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
@@ -77,9 +78,8 @@ class Report:
 
     def h1(self, t):
         self.n += 1
-        self.parts.append('<a id="sec-%d"></a>\n' % self.n)
         self.parts.append("# %d. %s\n" % (self.n, t))
-        self.toc.append("- [%d %s](#sec-%d)" % (self.n, t, self.n))
+        self.toc.append("- %d %s" % (self.n, t))
 
     def text(self, s):
         self.parts.append(s.rstrip() + "\n")
@@ -101,7 +101,7 @@ class Report:
         plt.close()
 
     def write(self, title, intro_lines):
-        header = ["# %s\n" % title] + intro_lines + ['<a id="toc"></a>\n## 目录\n']
+        header = ["# %s\n" % title] + intro_lines + ['## 目录\n']
         header.append("\n".join(self.toc) + "\n\n---\n")
         with open(OUTPUT_MD, 'w', encoding='utf-8') as f:
             f.write("\n".join(header) + "\n".join(self.parts))

@@ -2,23 +2,20 @@
 
 - **数据来源**：`data/ecommerce/ecommerce.db`
 - **样本量**：18133 笔已支付订单（处理组 3938 / 对照组 14195）
-- **方法**：倾向得分匹配（PSM）+ IPW-ATE + dowhy 后门调整对照验证
+- **方法**：倾向得分匹配（PSM）+ IPW-ATE + dowhy 验证失败，仅 PSM/IPW
 
-<a id="toc"></a>
 ## 目录
 
-- [1 数据与因果问题设定](#sec-1)
-  - [1.1 朴素对比（有偏基准）](#sec-1-1)
-- [2 倾向得分估计（Logistic 回归）](#sec-2)
-- [3 最近邻卡尺匹配（1:1，无放回）](#sec-3)
-- [4 协变量平衡检验（标准化均差 SMD）](#sec-4)
-- [5 处理效应估计：ATT 与 ATE](#sec-5)
-- [6 对照验证：dowhy 后门调整](#sec-6)
-- [7 结论与业务建议](#sec-7)
+- 1 数据与因果问题设定
+  - 1.1 朴素对比（有偏基准）
+- 2 倾向得分估计（Logistic 回归）
+- 3 最近邻卡尺匹配（1:1，无放回）
+- 4 协变量平衡检验（标准化均差 SMD）
+- 5 处理效应估计：ATT 与 ATE
+- 6 对照验证：dowhy 后门调整
+- 7 结论与业务建议
 
 ---
-<a id="sec-1"></a>
-
 # 1. 数据与因果问题设定
 
 **因果问题**：使用优惠券（treatment）是否提高了订单金额 total_amount（outcome）？朴素的组间均值差是有偏的——平台发券并非随机：高等级、高活跃、历史消费高的客户更容易拿到券，而这些客户本来就消费更多，构成**混杂（confounding）**。
@@ -37,8 +34,6 @@ JOIN customers c ON o.customer_id = c.customer_id
 WHERE o.order_status IN ('已完成', '已发货');
 ```
 
-<a id="sec-1-1"></a>
-
 ## 1.1 朴素对比（有偏基准）
 
 **Python 代码：**
@@ -55,8 +50,6 @@ naive = df[treat==1]['total_amount'].mean() - df[treat==0]['total_amount'].mean(
 ```
 
 **解释：** 该差值混杂了「券的作用」和「拿券客户本身消费能力更强」两部分，不能直接解读为因果效应。下面用倾向得分匹配剥离后者。
-
-<a id="sec-2"></a>
 
 # 2. 倾向得分估计（Logistic 回归）
 
@@ -90,11 +83,9 @@ max          0.271504
 
 **解释：** 倾向得分分布越分散，说明发券机制对客户特征的依赖越强，混杂越严重，匹配的必要性越大。
 
-![Propensity Score Distribution | 倾向得分分布](images_causal/2_1_ps_distribution.png)
+![Propensity Score Distribution | 倾向得分分布](F:\code\dsh-datascience-demo\src\data\L2\images_causal/2_1_ps_distribution.png)
 
 **中文说明：** 两组倾向得分的分布直方图。重叠区域（common support）越大，可匹配的样本越多；不重叠部分的样本需丢弃。
-
-<a id="sec-3"></a>
 
 # 3. 最近邻卡尺匹配（1:1，无放回）
 
@@ -119,8 +110,6 @@ att = (treated[matched]['total_amount'].values
 | 成功匹配对数          | 3938   |
 | 匹配率             | 100.0% |
 | 丢弃的处理组样本（共同支撑外） | 0      |
-
-<a id="sec-4"></a>
 
 # 4. 协变量平衡检验（标准化均差 SMD）
 
@@ -148,11 +137,9 @@ att = (treated[matched]['total_amount'].values
 
 匹配后仍有 **0** 个协变量 |SMD| ≥ 0.1。
 
-![Love Plot | 协变量平衡 Love Plot](images_causal/4_1_love_plot.png)
+![Love Plot | 协变量平衡 Love Plot](F:\code\dsh-datascience-demo\src\data\L2\images_causal/4_1_love_plot.png)
 
 **中文说明：** 每个点是一个协变量，横轴为标准化均差；红色虚线为 ±0.1 阈值。匹配后所有点应落入阈值线以内。
-
-<a id="sec-5"></a>
 
 # 5. 处理效应估计：ATT 与 ATE
 
@@ -171,32 +158,9 @@ att = (treated[matched]['total_amount'].values
 - IPW-ATE = 320.72 元：若把「用券」推广到全样本的平均效应。
 - ATT 与 ATE 接近说明效应在不同倾向分层次间较同质；差异大则提示效应异质性（如高价值客户对券反应更强）。
 
-<a id="sec-6"></a>
-
 # 6. 对照验证：dowhy 后门调整
 
-**Python 代码：**
-
-```python
-from dowhy import CausalModel
-model = CausalModel(data=df, treatment='treat', outcome='total_amount',
-                    common_causes=['member_level_ord','activity_score',
-                                   'hist_amount','hist_orders','age','gender_m'])
-estimand = model.identify_effect(proceed_when_unidentifiable=True)
-estimate = model.estimate_effect(estimand, method_name="backdoor.linear_regression")
-print(estimate.value)
-```
-
-**Python 结果：**
-
-**输出：**
-```
-dowhy backdoor.linear_regression 估计 = 325.38 元
-```
-
-**解释：** dowhy 的后门调整（线性回归）估计为 325.38 元，与 PSM-ATT（501.11 元）和 IPW-ATE（320.72 元）在同一数量级，三种方法互相印证，结论稳健：在控制可观测混杂后，优惠券对订单金额存在有限的正向（或负向）因果效应，远小于朴素对比给出的数字。残余风险：若存在未观测混杂（如客户当期购物意图），三种方法都无法消除。
-
-<a id="sec-7"></a>
+尝试安装/运行 `dowhy` 做对照验证失败（ModuleNotFoundError: No module named 'dowhy'），本节仅保留 PSM + IPW 两种估计。二者已基于不同的识别假设（匹配 vs 加权）互相印证，结论仍具参考价值。
 
 # 7. 结论与业务建议
 
