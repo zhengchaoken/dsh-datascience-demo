@@ -304,12 +304,14 @@ export function DocView({
   error,
   onRetry,
   onNavigate,
+  eyebrow = 'DATA SCIENCE DOCUMENT',
 }: {
   doc: DataDocContent | null
   loading: boolean
   error: string | null
   onRetry: () => void
   onNavigate: (path: string) => void
+  eyebrow?: string
 }): ReactElement {
   if (loading && doc === null) {
     return (
@@ -333,7 +335,7 @@ export function DocView({
   if (doc === null) {
     return (
       <section className="dsd-page">
-        <div className="dsd-card dsd-doc-loading">请选择左侧「数据科学」中的文档。</div>
+        <div className="dsd-card dsd-doc-loading">请选择左侧菜单中的文档。</div>
       </section>
     )
   }
@@ -341,7 +343,7 @@ export function DocView({
   return (
     <section className="dsd-page">
       <div className="dsd-doc-head">
-        <span className="dsd-eyebrow">DATA SCIENCE DOCUMENT</span>
+        <span className="dsd-eyebrow">{eyebrow}</span>
         <h1>{doc.title}</h1>
         <p className="dsd-doc-path">src/data/{doc.path}</p>
       </div>

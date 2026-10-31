@@ -33,6 +33,10 @@ type Page =
   | { kind: 'dataset-table'; table: string }
   | { kind: 'science'; doc: string }
   | { kind: 'html'; path: string }
+  | { kind: 'harness' }
+
+/** Harness 菜单固定展示的说明文档。 */
+const HARNESS_DOC = 'harness/README.md'
 
 /** 示例数据菜单里的九张表（静态清单，行数等动态信息从 /dataset 接口补充）。 */
 const DATASET_MENU: { name: string; label: string }[] = [
@@ -69,6 +73,8 @@ function pageToHash(page: Page): string {
       return `#/doc/${page.doc}`
     case 'html':
       return `#/html/${page.path}`
+    case 'harness':
+      return '#/harness'
     default:
       return '#/home'
   }
@@ -77,7 +83,7 @@ function pageToHash(page: Page): string {
 /** 判断 hash 是否由面板自己写入，避免把宿主应用的地址变化当成页面切换。 */
 function isPanelHash(hash: string): boolean {
   const head = hash.replace(/^#(?:[/])?/, '').split('/')[0] ?? ''
-  return ['home', 'environment', 'dataset', 'doc', 'html'].includes(head)
+  return ['home', 'environment', 'dataset', 'doc', 'html', 'harness'].includes(head)
 }
 
 /** 解析地址栏 hash；无法识别时回到首页。 */
@@ -91,6 +97,7 @@ function hashToPage(hash: string): Page {
   }
   if (head === 'doc' && segments.length > 1) return { kind: 'science', doc: segments.slice(1).join('/') }
   if (head === 'html' && segments.length > 1) return { kind: 'html', path: segments.slice(1).join('/') }
+  if (head === 'harness') return { kind: 'harness' }
   return { kind: 'home' }
 }
 
@@ -149,6 +156,18 @@ function IconBook({ size = 16 }: { size?: number }): ReactElement {
       <path d="M8 4.2c-1.1-.9-2.6-1.4-4.6-1.4v9.4c2 0 3.5.5 4.6 1.4" />
       <path d="M8 4.2c1.1-.9 2.6-1.4 4.6-1.4v9.4c-2 0-3.5.5-4.6 1.4" />
       <path d="M8 4.2v9.4" />
+    </svg>
+  )
+}
+
+/** 「Harness」入口：终端窗口，呼应工具与命令。 */
+function IconTerminal({ size = 16 }: { size?: number }): ReactElement {
+  return (
+    <svg className="dsd-menu-icon" viewBox="0 0 16 16" width={size} height={size} fill="none"
+      stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.7" y="2.5" width="12.6" height="11" rx="2" />
+      <path d="m4.6 6.3 1.9 1.7-1.9 1.7" />
+      <path d="M8.3 10h3.2" />
     </svg>
   )
 }
@@ -262,6 +281,7 @@ function Banner({
       { label: htmlDocTitle(page.path), target: null },
     )
   }
+  if (page.kind === 'harness') trail.push({ label: 'Harness', target: null })
 
   return (
     <header className="dsd-banner">
@@ -377,6 +397,17 @@ function Sidebar({
           >
             <IconBook />
           </button>
+          <button
+            className={`dsd-rail-button${page.kind === 'harness' ? ' is-active' : ''}`}
+            onClick={() => {
+              onToggle()
+              onSelect({ kind: 'harness' })
+            }}
+            title="Harness"
+            aria-label="Harness"
+          >
+            <IconTerminal />
+          </button>
         </div>
       </aside>
     )
@@ -466,6 +497,14 @@ function Sidebar({
             ))}
           </div>
         ) : null}
+        <button
+          className={`dsd-menu-item${page.kind === 'harness' ? ' is-active' : ''}`}
+          onClick={() => onSelect({ kind: 'harness' })}
+          title="工具清单、安装步骤与使用示例"
+        >
+          <IconTerminal />
+          <span className="dsd-menu-label">Harness</span>
+        </button>
       </div>
     </aside>
   )
@@ -1604,7 +1643,8 @@ export function App(): ReactElement {
     }
   }, [])
 
-  const docPath = page.kind === 'science' ? page.doc : null
+  const docPath =
+    page.kind === 'science' ? page.doc : page.kind === 'harness' ? HARNESS_DOC : null
 
   // 切换文档时重新读取 Markdown。
   useEffect(() => {
@@ -1753,6 +1793,7 @@ export function App(): ReactElement {
               error={docError}
               onRetry={() => setDocReload(value => value + 1)}
               onNavigate={handleDocNavigate}
+              eyebrow={page.kind === 'harness' ? 'HARNESS TOOLKIT' : 'DATA SCIENCE DOCUMENT'}
             />
           )}
         </main>
