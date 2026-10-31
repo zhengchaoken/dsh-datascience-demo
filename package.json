@@ -1,0 +1,67 @@
+{
+  "name": "dsh-datascience-demo",
+  "version": "0.1.0",
+  "description": "DSH 数据科学示例插件：左侧边栏「数据科学示例」菜单，点击后在右侧打开一个空白面板。 | DSH data science demo plugin: a sidebar entry that opens a blank panel in the main column.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "plugin": {
+      "schemaVersion": 1,
+      "displayName": {
+        "zh-CN": "数据科学示例",
+        "en": "datascience-demo"
+      },
+      "summary": {
+        "zh-CN": "左侧边栏「数据科学示例」入口，点击后在右侧打开一个空白面板",
+        "en": "Sidebar entry \"datascience-demo\" that opens a blank panel in the main column"
+      },
+      "category": "data-science"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "build:watch": "tsx watch scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "datascience"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/react": "^18.3.0",
+    "esbuild-wasm": "^0.28.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
