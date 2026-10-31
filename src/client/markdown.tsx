@@ -270,12 +270,18 @@ export function MarkdownView({
         continue
       }
 
-      // 段落：连续非空、非块级前缀的行合并
+      // 段落：连续非空、非块级前缀的行合并。
+      // 用 do/while 保证每轮至少消费一行——像 `|Z| > 3 的观测……` 这种以 `|` 开头
+      // 却并非表格的文本行，否则会让循环原地打转并失控耗尽渲染进程内存。
       const body: string[] = []
-      while (index < lines.length && lines[index].trim() !== '' && blockKind(lines[index]) === 'text') {
+      do {
         body.push(lines[index].trim())
         index += 1
-      }
+      } while (
+        index < lines.length &&
+        lines[index].trim() !== '' &&
+        blockKind(lines[index]) === 'text'
+      )
       output.push(<p key={key++} className="dsd-md-text">{inline(body.join(' '))}</p>)
     }
 

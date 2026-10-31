@@ -1504,7 +1504,7 @@ n_z_out = int(((orders[NUM_COL] - mu) / sd).abs().gt(3).sum())
 
 block(
     "Z-score 异常值边界",
-    "|Z| > 3 的观测视为疑似异常。",
+    "`|Z| > 3` 的观测视为疑似异常。",
     """WITH s AS (
   SELECT AVG(total_amount) AS mu,
          SQRT(AVG(total_amount*total_amount) - AVG(total_amount)*AVG(total_amount)) AS sigma
