@@ -2,8 +2,8 @@
  * 数据科学文档（src/data 下的 Markdown 与图表）的只读访问层。
  *
  * 文档全部来自工作区的 `src/data` 目录：README 系列讲方法论，各层目录放
- * 专题报告，`images*` 放图表。这里只做两件事——把文档清单交给界面，把
- * 指定路径的 Markdown / 图片内容读出来。
+ * 专题报告，`images*` 放图表，`profiling` 下还有独立的 HTML 报告。这里只做两件事——
+ * 把文档清单交给界面，把指定路径的 Markdown / 图片 / HTML 内容读出来。
  *
  * 安全约束：路径一律相对 `src/data`，拒绝 `..`、绝对路径与非白名单扩展名，
  * 因此界面无法借此读取工作区其它文件。
@@ -38,7 +38,7 @@ export const DATA_DOCS: DataDocEntry[] = [
 ]
 
 const MARKDOWN_EXTENSIONS = new Set(['.md'])
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'])
+const ASSET_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.html'])
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -47,6 +47,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   '.gif': 'image/gif',
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
+  '.html': 'text/html; charset=utf-8',
 }
 
 /** 把相对路径解析到 `src/data` 内的绝对路径；越界或扩展名不允许时返回 null。 */
@@ -78,12 +79,12 @@ export async function readDoc(relative: string): Promise<DataDocContent> {
   return { path: relative.replace(/\\/g, '/'), title, markdown }
 }
 
-/** 读取一张图表；返回内容与 MIME 类型。 */
+/** 读取一张图表或一份 HTML 报告；返回内容与 MIME 类型。 */
 export async function readDocAsset(
   relative: string,
 ): Promise<{ content: Buffer; mime: string }> {
-  if (!IMAGE_EXTENSIONS.has(path.extname(relative).toLowerCase())) {
-    throw new Error('只支持图片资源')
+  if (!ASSET_EXTENSIONS.has(path.extname(relative).toLowerCase())) {
+    throw new Error('只支持图片或 HTML 资源')
   }
   const absolute = resolveInsideData(relative)
   if (absolute === null) throw new Error('资源路径不合法')

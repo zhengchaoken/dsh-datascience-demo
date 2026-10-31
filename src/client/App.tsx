@@ -14,6 +14,7 @@ import type {
 } from '../protocol.ts'
 import {
   ApiError,
+  docAssetAbsoluteUrl,
   fetchDataDoc,
   fetchDataDocs,
   fetchDataset,
@@ -24,13 +25,14 @@ import {
 } from './api.ts'
 import { DocView } from './markdown.tsx'
 
-/** 页面标识：示例数据下挂概览页、九张表页与数据科学文档页。 */
+/** 页面标识：示例数据下挂概览页、九张表页，数据科学下挂文档页与 HTML 报告页。 */
 type Page =
   | { kind: 'home' }
   | { kind: 'environment' }
   | { kind: 'dataset' }
   | { kind: 'dataset-table'; table: string }
   | { kind: 'science'; doc: string }
+  | { kind: 'html'; path: string }
 
 /** 示例数据菜单里的九张表（静态清单，行数等动态信息从 /dataset 接口补充）。 */
 const DATASET_MENU: { name: string; label: string }[] = [
@@ -52,6 +54,44 @@ function failureMessage(failure: unknown): string {
     : failure instanceof Error
       ? failure.message
       : String(failure)
+}
+
+/** 把页面转成地址栏 hash，供浏览器前进 / 后退回放。 */
+function pageToHash(page: Page): string {
+  switch (page.kind) {
+    case 'environment':
+      return '#/environment'
+    case 'dataset':
+      return '#/dataset'
+    case 'dataset-table':
+      return `#/dataset/${page.table}`
+    case 'science':
+      return `#/doc/${page.doc}`
+    case 'html':
+      return `#/html/${page.path}`
+    default:
+      return '#/home'
+  }
+}
+
+/** 判断 hash 是否由面板自己写入，避免把宿主应用的地址变化当成页面切换。 */
+function isPanelHash(hash: string): boolean {
+  const head = hash.replace(/^#(?:[/])?/, '').split('/')[0] ?? ''
+  return ['home', 'environment', 'dataset', 'doc', 'html'].includes(head)
+}
+
+/** 解析地址栏 hash；无法识别时回到首页。 */
+function hashToPage(hash: string): Page {
+  const segments = hash.replace(/^#(?:[/])?/, '').split('/').filter(segment => segment !== '')
+  const head = segments[0] ?? ''
+  if (head === 'environment') return { kind: 'environment' }
+  if (head === 'dataset') {
+    const table = segments[1] ?? ''
+    return table === '' ? { kind: 'dataset' } : { kind: 'dataset-table', table }
+  }
+  if (head === 'doc' && segments.length > 1) return { kind: 'science', doc: segments.slice(1).join('/') }
+  if (head === 'html' && segments.length > 1) return { kind: 'html', path: segments.slice(1).join('/') }
+  return { kind: 'home' }
 }
 
 /** 侧边栏与 banner 的 16px 线性图标。 */
@@ -178,17 +218,51 @@ function HeroArt(): ReactElement {
   )
 }
 
-/** 顶部 banner：一级/二级导航。 */
-function Banner({ page, docTitle }: { page: Page; docTitle: string | null }): ReactElement {
-  const trail: string[] = ['首页']
-  if (page.kind === 'environment') trail.push('环境检查')
-  if (page.kind === 'dataset') trail.push('示例数据')
+/** HTML 报告的展示标题；未收录时退回文件名。 */
+const HTML_DOC_TITLES: Record<string, string> = {
+  'report_analyst.html': '分析师报告',
+  'report_manager.html': '管理者报告',
+}
+
+function htmlDocTitle(path: string): string {
+  const name = path.split('/').pop() ?? path
+  return HTML_DOC_TITLES[name] ?? name.replace(/\.html?$/i, '')
+}
+
+/** 顶部 banner：可点击的面包屑导航，点击即可回到对应层级。 */
+function Banner({
+  page,
+  docTitle,
+  scienceLanding,
+  onSelect,
+}: {
+  page: Page
+  docTitle: string | null
+  scienceLanding: string
+  onSelect: (page: Page) => void
+}): ReactElement {
+  const trail: { label: string; target: Page | null }[] = [{ label: '首页', target: { kind: 'home' } }]
+  if (page.kind === 'environment') trail.push({ label: '环境检查', target: null })
+  if (page.kind === 'dataset') trail.push({ label: '示例数据', target: null })
   if (page.kind === 'dataset-table') {
-    trail.push('示例数据', DATASET_MENU.find(item => item.name === page.table)?.label ?? page.table)
+    trail.push(
+      { label: '示例数据', target: { kind: 'dataset' } },
+      { label: DATASET_MENU.find(item => item.name === page.table)?.label ?? page.table, target: null },
+    )
   }
   if (page.kind === 'science') {
-    trail.push('数据科学', docTitle ?? '文档')
+    trail.push(
+      { label: '数据科学', target: { kind: 'science', doc: scienceLanding } },
+      { label: docTitle ?? '文档', target: null },
+    )
   }
+  if (page.kind === 'html') {
+    trail.push(
+      { label: '数据科学', target: { kind: 'science', doc: scienceLanding } },
+      { label: htmlDocTitle(page.path), target: null },
+    )
+  }
+
   return (
     <header className="dsd-banner">
       <div className="dsd-brand">
@@ -203,16 +277,30 @@ function Banner({ page, docTitle }: { page: Page; docTitle: string | null }): Re
       <nav className="dsd-crumbs" aria-label="当前位置">
         <span>数据科学示例</span>
         <span className="dsd-crumb-sep">/</span>
-        {trail.map((node, index) => (
-          <span key={node}>
-            {index > 0 ? <span className="dsd-crumb-sep">/ </span> : null}
-            {index === trail.length - 1 ? (
-              <span className="dsd-crumb-current">{node}</span>
-            ) : (
-              <span>{node} </span>
-            )}
-          </span>
-        ))}
+        {trail.map((node, index) => {
+          const target = node.target
+          const clickable = target !== null && index !== trail.length - 1
+          return (
+            <span key={`${node.label}-${index}`}>
+              {index > 0 ? <span className="dsd-crumb-sep">/ </span> : null}
+              {clickable && target !== null ? (
+                <a
+                  className="dsd-crumb-link"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onSelect(target)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') onSelect(target)
+                  }}
+                >
+                  {node.label}
+                </a>
+              ) : (
+                <span className="dsd-crumb-current">{node.label}</span>
+              )}
+            </span>
+          )
+        })}
       </nav>
     </header>
   )
@@ -1385,12 +1473,33 @@ function DatasetTablePage({
   )
 }
 
+/** HTML 报告页：在面板内以 iframe 打开单文件报告。 */
+function HtmlDocPage({ path }: { path: string }): ReactElement {
+  const title = htmlDocTitle(path)
+  return (
+    <section className="dsd-page">
+      <div className="dsd-doc-head dsd-html-head">
+        <span className="dsd-eyebrow">DATA SCIENCE REPORT</span>
+        <h1>{title}</h1>
+        <p className="dsd-doc-path">src/data/{path}</p>
+      </div>
+      <iframe className="dsd-html-frame" src={docAssetAbsoluteUrl(path)} title={title} />
+    </section>
+  )
+}
+
 /** 面板根组件。 */
 export function App(): ReactElement {
-  const [page, setPage] = useState<Page>({ kind: 'home' })
+  const [page, setPage] = useState<Page>(() =>
+    typeof window === 'undefined' ? { kind: 'home' } : hashToPage(window.location.hash),
+  )
   const [collapsed, setCollapsed] = useState(false)
-  const [datasetOpen, setDatasetOpen] = useState(false)
-  const [scienceOpen, setScienceOpen] = useState(false)
+  const [datasetOpen, setDatasetOpen] = useState(
+    () => page.kind === 'dataset' || page.kind === 'dataset-table',
+  )
+  const [scienceOpen, setScienceOpen] = useState(
+    () => page.kind === 'science' || page.kind === 'html',
+  )
   const [docs, setDocs] = useState<DataDocEntry[]>([])
   const [doc, setDoc] = useState<DataDocContent | null>(null)
   const [docLoading, setDocLoading] = useState(false)
@@ -1402,6 +1511,8 @@ export function App(): ReactElement {
   const [install, setInstall] = useState<InstallState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /** 最近一次写入地址栏的 hash，用于忽略自己触发的 hashchange。 */
+  const lastHash = useRef<string>(typeof window === 'undefined' ? '' : window.location.hash)
 
   const refresh = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -1519,40 +1630,83 @@ export function App(): ReactElement {
     }
   }, [docPath, docReload])
 
+  /** 面板内跳转：更新页面、展开对应菜单，并写入地址栏历史。 */
+  const navigate = useCallback((next: Page, replace = false): void => {
+    if (next.kind === 'dataset' || next.kind === 'dataset-table') setDatasetOpen(true)
+    if (next.kind === 'science' || next.kind === 'html') setScienceOpen(true)
+
+    setPage(next)
+
+    const hash = pageToHash(next)
+    lastHash.current = hash
+    if (typeof window === 'undefined' || window.location.hash === hash) return
+    try {
+      if (replace) window.history.replaceState(null, '', hash)
+      else window.history.pushState(null, '', hash)
+    } catch {
+      try {
+        window.location.hash = hash
+      } catch {
+        // 无法写入地址栏时保持面板内导航。
+      }
+    }
+  }, [])
+
+  // 响应浏览器 / 面板的前进、后退：地址栏 hash 变化时回到对应界面。
+  useEffect(() => {
+    const restore = (): void => {
+      const hash = window.location.hash
+      if (hash === lastHash.current || !isPanelHash(hash)) return
+      lastHash.current = hash
+      const next = hashToPage(hash)
+      if (next.kind === 'dataset' || next.kind === 'dataset-table') setDatasetOpen(true)
+      if (next.kind === 'science' || next.kind === 'html') setScienceOpen(true)
+      setPage(next)
+    }
+    window.addEventListener('popstate', restore)
+    window.addEventListener('hashchange', restore)
+    return () => {
+      window.removeEventListener('popstate', restore)
+      window.removeEventListener('hashchange', restore)
+    }
+  }, [])
+
   /** 「数据科学」父菜单：展开/收起，首次展开时进入分析框架。 */
   const handleScienceToggle = useCallback((): void => {
-    setScienceOpen(open => {
-      const next = !open
-      if (next) {
-        setPage(current => (current.kind === 'science' ? current : { kind: 'science', doc: 'README.md' }))
-      }
-      return next
-    })
-  }, [])
+    const opening = !scienceOpen
+    setScienceOpen(opening)
+    if (opening && page.kind !== 'science' && page.kind !== 'html') {
+      navigate({ kind: 'science', doc: docs[0]?.path ?? 'README.md' })
+    }
+  }, [docs, navigate, page.kind, scienceOpen])
 
   /** 「示例数据」父菜单：展开/收起，未进入过该栏目时跳到概览页。 */
   const handleDatasetToggle = useCallback((): void => {
-    setDatasetOpen(open => {
-      const next = !open
-      if (next) {
-        setPage(current =>
-          current.kind === 'dataset' || current.kind === 'dataset-table' ? current : { kind: 'dataset' },
-        )
-      }
-      return next
-    })
-  }, [])
+    const opening = !datasetOpen
+    setDatasetOpen(opening)
+    if (opening && page.kind !== 'dataset' && page.kind !== 'dataset-table') {
+      navigate({ kind: 'dataset' })
+    }
+  }, [datasetOpen, navigate, page.kind])
 
-  /** 在对应栏目内跳转时保持菜单展开。 */
-  const handleSelect = useCallback((next: Page): void => {
-    if (next.kind === 'dataset' || next.kind === 'dataset-table') setDatasetOpen(true)
-    if (next.kind === 'science') setScienceOpen(true)
-    setPage(next)
-  }, [])
+  /** 文档内链接：`.html` 报告走独立页面，其余按 Markdown 文档打开。 */
+  const handleDocNavigate = useCallback(
+    (path: string): void => {
+      navigate(/\.html?$/i.test(path) ? { kind: 'html', path } : { kind: 'science', doc: path })
+    },
+    [navigate],
+  )
+
+  const scienceLanding = docs[0]?.path ?? 'README.md'
 
   return (
     <div className="dsd-app">
-      <Banner page={page} docTitle={doc?.title ?? null} />
+      <Banner
+        page={page}
+        docTitle={doc?.title ?? null}
+        scienceLanding={scienceLanding}
+        onSelect={navigate}
+      />
       <div className="dsd-body">
         <Sidebar
           page={page}
@@ -1563,7 +1717,7 @@ export function App(): ReactElement {
           onToggle={() => setCollapsed(value => !value)}
           onDatasetToggle={handleDatasetToggle}
           onScienceToggle={handleScienceToggle}
-          onSelect={handleSelect}
+          onSelect={navigate}
         />
         <main className="dsd-main">
           {page.kind === 'home' ? (
@@ -1582,7 +1736,7 @@ export function App(): ReactElement {
               dataset={dataset}
               error={datasetError}
               onRetry={() => void loadDataset()}
-              onOpenTable={table => handleSelect({ kind: 'dataset-table', table })}
+              onOpenTable={table => navigate({ kind: 'dataset-table', table })}
             />
           ) : page.kind === 'dataset-table' ? (
             <DatasetTablePage
@@ -1590,13 +1744,15 @@ export function App(): ReactElement {
               table={page.table}
               meta={dataset?.tables.find(table => table.name === page.table) ?? null}
             />
+          ) : page.kind === 'html' ? (
+            <HtmlDocPage key={page.path} path={page.path} />
           ) : (
             <DocView
               doc={doc}
               loading={docLoading}
               error={docError}
               onRetry={() => setDocReload(value => value + 1)}
-              onNavigate={path => handleSelect({ kind: 'science', doc: path })}
+              onNavigate={handleDocNavigate}
             />
           )}
         </main>

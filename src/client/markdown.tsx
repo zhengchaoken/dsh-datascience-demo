@@ -2,7 +2,7 @@
  * 轻量 Markdown 渲染：数据科学文档只用到标题、表格、代码块、列表、引用、图表
  * 与少量内联样式，因此不引入第三方解析器，保持插件零依赖。
  *
- * 文档里的相对链接（`.md`）会转换为面板内跳转，相对图片路径会改写为
+ * 文档里的相对链接（`.md` / `.html`）会转换为面板内跳转，相对图片路径会改写为
  * `/api/dsh-datascience/doc-asset` 地址。
  */
 
@@ -57,17 +57,23 @@ function inlineNodes(text: string, baseDir: string, onNavigate: (path: string) =
     if (link) {
       const label = link[1]
       const href = link[2]
-      const markdownTarget = href.includes('.md#') ? href.split('#')[0] : href.endsWith('.md') ? href : null
+      const fragmentless = href.split('#')[0]
+      const internalTarget =
+        href.startsWith('#') || fragmentless === ''
+          ? null
+          : /\.(md|html)$/i.test(fragmentless)
+            ? fragmentless
+            : null
       nodes.push(
-        markdownTarget !== null ? (
+        internalTarget !== null ? (
           <a
             key={key++}
             className="dsd-md-link"
             role="button"
             tabIndex={0}
-            onClick={() => onNavigate(resolvePath(baseDir, markdownTarget))}
+            onClick={() => onNavigate(resolvePath(baseDir, internalTarget))}
             onKeyDown={event => {
-              if (event.key === 'Enter') onNavigate(resolvePath(baseDir, markdownTarget))
+              if (event.key === 'Enter') onNavigate(resolvePath(baseDir, internalTarget))
             }}
           >
             {label}

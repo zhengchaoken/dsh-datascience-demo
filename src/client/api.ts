@@ -103,3 +103,12 @@ export async function fetchDataDoc(path: string): Promise<DataDocContent> {
 export function docAssetUrl(path: string): string {
   return `${BASE}/doc-asset?path=${encodeURIComponent(path)}`
 }
+
+/** 图表或 HTML 报告的绝对访问地址（供 iframe 等需要独立基址的场景使用）。 */
+export function docAssetAbsoluteUrl(path: string): string {
+  try {
+    return new URL(docAssetUrl(path), window.location.href).href
+  } catch {
+    return docAssetUrl(path)
+  }
+}

@@ -92,6 +92,18 @@ export const APP_CSS = `
 }
 .dsd-crumb-sep { color: #b9c5d6; }
 .dsd-crumb-current { color: var(--dsd-ink); font-weight: 600; }
+.dsd-crumb-link {
+  color: var(--dsd-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 2px;
+  text-decoration: none;
+}
+.dsd-crumb-link:hover { color: var(--dsd-accent); text-decoration: underline; }
+.dsd-crumb-link:focus-visible {
+  outline: 1px solid var(--dsd-accent);
+  outline-offset: 2px;
+}
 .dsd-status-dot {
   width: 7px;
   height: 7px;
@@ -1059,6 +1071,19 @@ export const APP_CSS = `
 .dsd-md-image-inline {
   max-width: 100%;
   vertical-align: middle;
+}
+
+/* ---------- HTML 报告 ---------- */
+.dsd-html-head { max-width: none; }
+.dsd-html-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 240px);
+  min-height: 420px;
+  border: 1px solid var(--dsd-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 40, 90, 0.06), 0 10px 26px rgba(15, 40, 90, 0.06);
 }
 
 @media (max-width: 1100px) {

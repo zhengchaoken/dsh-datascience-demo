@@ -47,7 +47,7 @@ ORDER BY ds;
 | 75%   |  261269.3700 |    38.0000 |       38.0000 |
 | max   | 2304069.2700 |   123.0000 |      119.0000 |
 
-![Daily Series | 日频业务序列](F:\code\dsh-datascience-demo\src\data\L2\images_granger/1_1_daily_series.png)
+![Daily Series | 日频业务序列](images_granger/1_1_daily_series.png)
 
 **中文说明：** 从上到下依次为日 GMV、日订单数、日活跃客户数。可看到 618、双 11 大促峰值与春节低谷。三条序列形态高度相似，提示它们之间存在领先-滞后或共因关系——这正是 Granger 检验要诊断的问题。
 
@@ -133,7 +133,7 @@ Granger 因果的定义：若 X 的过去值能显著提高对 Y 的预测能力
 
 **解读：** n_orders → n_customers 最小 p 值 = 6.16e-02（滞后 6）；反方向最小 p 值 = 4.14e-02（滞后 6）。仅后者显著，为单向因果；
 
-![Granger p-values Heatmap | Granger 因果 p 值热力图](F:\code\dsh-datascience-demo\src\data\L2\images_granger/3_1_granger_pvals.png)
+![Granger p-values Heatmap | Granger 因果 p 值热力图](images_granger/3_1_granger_pvals.png)
 
 **中文说明：** 颜色越深表示 p 值越小（因果证据越强）。-log10(p) > 2 对应 p < 0.01。
 
@@ -151,7 +151,7 @@ VAR(p=14), AIC=-12.26
 Model:                         VAR
 Method:                        OLS
 Date:           Sat, 31, Oct, 2026
-Time:                     21:27:17
+Time:                     21:43:37
 --------------------------------------------------------------------
 No. of Equations:         3.00000    BIC:                   -11.2040
 Nobs:                     517.000    HQIC:                  -11.8486
@@ -161,7 +161,7 @@ AIC:                     -12.2639    Det(Omega_mle):     3.71749e-06
 ...(截断)
 ```
 
-![Impulse Response Functions | 脉冲响应函数](F:\code\dsh-datascience-demo\src\data\L2\images_granger/4_1_irf.png)
+![Impulse Response Functions | 脉冲响应函数](images_granger/4_1_irf.png)
 
 **中文说明：** 每张子图：行=被冲击的变量，列=响应变量；横轴=冲击后的天数。例如 (n_customers 行, gmv 列) 表示「日活跃客户数受冲击后，日 GMV 的后续响应路径」。置信带跨 0 则响应不显著。
 

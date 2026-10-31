@@ -107,13 +107,13 @@ minsup = 5.0%（108 个客户），共挖出 **2617** 个频繁模式（含单�
 
 # 3. 可视化
 
-![Top 20 Sequential Patterns | Top20 频繁序列模式](F:\code\dsh-datascience-demo\src\data\L2\images_sequence/3_1_top20.png)
+![Top 20 Sequential Patterns | Top20 频繁序列模式](images_sequence/3_1_top20.png)
 
 **中文说明：** 横条越长表示遵循该购买路径的客户越多。
 
 ## 3.1 两步转移矩阵（相邻订单的品类转移）
 
-![Transition Matrix | 相邻订单品类转移概率矩阵](F:\code\dsh-datascience-demo\src\data\L2\images_sequence/3_2_transition.png)
+![Transition Matrix | 相邻订单品类转移概率矩阵](images_sequence/3_2_transition.png)
 
 **中文说明：** 行=本单品类，列=下一单品类，数值=条件概率（行归一化）。对角线高表示「复购同品类」，非对角线高表示连带路径。
 

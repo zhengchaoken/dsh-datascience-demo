@@ -111,7 +111,7 @@ class Report:
         self.parts.append("**输出：**\n```\n%s\n```\n" % s)
 
     def image(self, name, caption=""):
-        self.parts.append("![%s](%s/%s)\n" % (caption, IMAGE_DIR, name))
+        self.parts.append("![%s](%s/%s)\n" % (caption, os.path.basename(IMAGE_DIR), name))
 
     def save_plt(self, name):
         path = os.path.join(IMAGE_DIR, name)

@@ -55,7 +55,7 @@ K = 4，轮廓系数 = 0.3328。
 
 Ward 法每次合并使簇内方差增量最小的两簇，产生一棵完整的凝聚树（dendrogram），可在任意高度切割得到不同簇数。
 
-![Ward Dendrogram | Ward 层次聚类树状图(截取最后30次合并)](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/3_1_dendrogram.png)
+![Ward Dendrogram | Ward 层次聚类树状图(截取最后30次合并)](images_clustering/3_1_dendrogram.png)
 
 **中文说明：** 纵轴为合并距离。距离跳跃最大的位置是合理的切割点：在跳跃上方横切一刀，切口数即为簇数。括号内为叶簇包含的客户数。
 
@@ -109,11 +109,11 @@ K = 4，轮廓系数 = 0.2745。
 |    2.0000 |  106.4973 |      5.6083 |  40442.8044 | 771.0000 |
 |    3.0000 |   10.1713 |      5.0714 |  23118.5068 | 420.0000 |
 
-![Cluster Profiles | 分群画像热力图](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/6_1_profile_heatmap.png)
+![Cluster Profiles | 分群画像热力图](images_clustering/6_1_profile_heatmap.png)
 
 **中文说明：** 颜色=该簇在维度上的标准化均值（红高蓝低），格内数字=原始均值。
 
-![Cluster Radar | 分群画像雷达图](F:\code\dsh-datascience-demo\src\data\L2\images_clustering/6_2_radar.png)
+![Cluster Radar | 分群画像雷达图](images_clustering/6_2_radar.png)
 
 **中文说明：** 雷达图三个轴为标准化后的 R/F/M。Recency 轴数值**越小**代表越活跃（图上越靠近中心越活跃），F/M 轴数值越大越好。
 

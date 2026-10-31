@@ -249,7 +249,7 @@ ax[1].set_title('Spearman Correlation')
 plt.tight_layout()
 ```
 
-![Pearson and Spearman Correlation Heatmaps | Pearson 与 Spearman 相关热力图](F:\code\dsh-datascience-demo\src\data\L2\images_diagnostic/2_3_corr_heatmap.png)
+![Pearson and Spearman Correlation Heatmaps | Pearson 与 Spearman 相关热力图](images_diagnostic/2_3_corr_heatmap.png)
 
 **中文说明：** 左图 = Pearson 相关热力图（Pearson Correlation）；右图 = Spearman 相关热力图（Spearman Correlation）。颜色越红表示正相关越强，越蓝表示负相关越强。
 
@@ -490,7 +490,7 @@ print(pd.DataFrame({'K': list(K_range), 'Inertia': inertias, 'Silhouette': silho
 10  703.7357      0.3754
 ```
 
-![Elbow Method & Silhouette Score | 肘部法则与轮廓系数](F:\code\dsh-datascience-demo\src\data\L2\images_diagnostic/4_3_elbow_silhouette.png)
+![Elbow Method & Silhouette Score | 肘部法则与轮廓系数](images_diagnostic/4_3_elbow_silhouette.png)
 
 **中文说明：** 左图 = 肘部法则（Elbow Method），纵轴为簇内平方和（Inertia）；右图 = 轮廓系数（Silhouette Score）。
 
@@ -565,7 +565,7 @@ rfm_pca = pca.fit_transform(rfm_scaled)
 plt.scatter(rfm_pca[:,0], rfm_pca[:,1], c=rfm['Cluster'], cmap='Set2', alpha=0.6)
 ```
 
-![K-Means Clusters (PCA 2D) | K-Means 聚类的 PCA 二维投影](F:\code\dsh-datascience-demo\src\data\L2\images_diagnostic/4_5_pca_clusters.png)
+![K-Means Clusters (PCA 2D) | K-Means 聚类的 PCA 二维投影](images_diagnostic/4_5_pca_clusters.png)
 
 **中文说明：** 横轴 = 第一主成分（PC1）；纵轴 = 第二主成分（PC2）；颜色 = 聚类标签（Cluster）。括号内为各主成分解释的方差比例。
 

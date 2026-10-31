@@ -103,11 +103,11 @@ precision = TP / (TP + FP); recall = TP / (TP + FN)
 
 **解释：** Precision 回答「报警的订单中有多少是真异常」，决定运营审核成本；Recall 回答「真异常抓住了多少」，决定风险敞口。业务上风控场景偏 Recall，审核资源紧张时偏 Precision。
 
-![Anomaly Scatter | 异常检测散点对比](F:\code\dsh-datascience-demo\src\data\L2\images_anomaly/5_1_scatter.png)
+![Anomaly Scatter | 异常检测散点对比](images_anomaly/5_1_scatter.png)
 
 **中文说明：** 三张图依次为近似真值、IsolationForest 预测、LOF 预测。红点=异常。批发单聚集在右侧（总件数 30+），价格异常单分布在上方（金额虚高）。
 
-![Anomaly Scatter (price view) | 价格视角异常散点](F:\code\dsh-datascience-demo\src\data\L2\images_anomaly/5_2_scatter_price.png)
+![Anomaly Scatter (price view) | 价格视角异常散点](images_anomaly/5_2_scatter_price.png)
 
 **中文说明：** 横轴换成订单内最高单价后，价格异常单（单价×10）在右侧明显离群，与批发单（右侧高件数）形成两个不同的异常簇——说明两类异常需要不同特征才能同时捕获。
 

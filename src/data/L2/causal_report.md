@@ -83,7 +83,7 @@ max          0.271504
 
 **解释：** 倾向得分分布越分散，说明发券机制对客户特征的依赖越强，混杂越严重，匹配的必要性越大。
 
-![Propensity Score Distribution | 倾向得分分布](F:\code\dsh-datascience-demo\src\data\L2\images_causal/2_1_ps_distribution.png)
+![Propensity Score Distribution | 倾向得分分布](images_causal/2_1_ps_distribution.png)
 
 **中文说明：** 两组倾向得分的分布直方图。重叠区域（common support）越大，可匹配的样本越多；不重叠部分的样本需丢弃。
 
@@ -137,7 +137,7 @@ att = (treated[matched]['total_amount'].values
 
 匹配后仍有 **0** 个协变量 |SMD| ≥ 0.1。
 
-![Love Plot | 协变量平衡 Love Plot](F:\code\dsh-datascience-demo\src\data\L2\images_causal/4_1_love_plot.png)
+![Love Plot | 协变量平衡 Love Plot](images_causal/4_1_love_plot.png)
 
 **中文说明：** 每个点是一个协变量，横轴为标准化均差；红色虚线为 ±0.1 阈值。匹配后所有点应落入阈值线以内。
 
