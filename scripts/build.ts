@@ -21,7 +21,7 @@ const ROOT = resolve(here, '..')
 const OUT = resolve(ROOT, 'lib')
 
 /** 宿主运行时提供的包：打进产物会产生重复状态。 */
-const HOST_EXTERNAL = ['@deepseek-ai/cordis', '@deepseek-ai/schemastery']
+const HOST_EXTERNAL = ['@deepseek-ai/cordis', '@deepseek-ai/schemastery', '@deepseek-ai/dsh-tools']
 
 /** 浏览器模块系统拥有的包。 */
 const CLIENT_EXTERNAL = ['react', 'react-dom', 'react/jsx-runtime']

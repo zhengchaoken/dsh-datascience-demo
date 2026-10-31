@@ -5,10 +5,12 @@ data_profiling_report.py
 电商数据集（ecommerce.db）多表数据探查脚本。
 
 用法：
-    python data_profiling_report.py                 # 默认探查 ../ecommerce/ecommerce.db
-    python data_profiling_report.py --db PATH       # 指定其他 SQLite 数据库
+    python data_profiling_report.py                    # 默认探查 ../ecommerce/ecommerce.db
+    python data_profiling_report.py --db PATH          # 指定其他 SQLite 数据库
+    python data_profiling_report.py --tables a,b       # 只探查指定表
+    python data_profiling_report.py --out-dir DIR      # 报告写到指定目录
 
-输出（均写入脚本所在目录）：
+输出（默认写入脚本所在目录）：
     data_profiling_report.md   面向数据团队的主报告
     report_manager.html        面向数据管理者（资产健康度 / 风险 / 合规）
     report_analyst.html        面向数据分析师（字段质量 / 建模就绪度 / 探索效率）
@@ -39,6 +41,7 @@ warnings.filterwarnings("ignore")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB = os.path.join(SCRIPT_DIR, "..", "ecommerce", "ecommerce.db")
+OUT_DIR = SCRIPT_DIR
 OUTPUT_MD = os.path.join(SCRIPT_DIR, "data_profiling_report.md")
 OUTPUT_MANAGER = os.path.join(SCRIPT_DIR, "report_manager.html")
 OUTPUT_ANALYST = os.path.join(SCRIPT_DIR, "report_analyst.html")
@@ -96,7 +99,7 @@ def save_fig(fig, key: str, title: str) -> None:
 
 
 def fig_b64(key: str) -> str:
-    path = os.path.join(SCRIPT_DIR, CHART_FILES[key])
+    path = os.path.join(OUT_DIR, CHART_FILES[key])
     with open(path, "rb") as fh:
         return base64.b64encode(fh.read()).decode("utf-8")
 
@@ -851,7 +854,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="电商数据集多表数据探查")
     parser.add_argument("--db", default=DEFAULT_DB, help="SQLite 数据库路径")
     parser.add_argument("--tables", default="", help="逗号分隔的表名，默认全部业务表")
+    parser.add_argument("--out-dir", default=SCRIPT_DIR, help="报告输出目录，默认脚本所在目录")
     args = parser.parse_args()
+
+    global OUT_DIR, OUTPUT_MD, OUTPUT_MANAGER, OUTPUT_ANALYST, IMAGE_DIR
+    OUT_DIR = os.path.abspath(args.out_dir)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    OUTPUT_MD = os.path.join(OUT_DIR, "data_profiling_report.md")
+    OUTPUT_MANAGER = os.path.join(OUT_DIR, "report_manager.html")
+    OUTPUT_ANALYST = os.path.join(OUT_DIR, "report_analyst.html")
+    IMAGE_DIR = os.path.join(OUT_DIR, "images")
 
     db_path = os.path.abspath(args.db)
     if not os.path.exists(db_path):

@@ -58,6 +58,9 @@
     "datascience"
   ],
   "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
   "devDependencies": {
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.0",
