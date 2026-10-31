@@ -1,5 +1,5 @@
 /**
- * 面板主体：banner 导航 + 可折叠侧边菜单 + 首页 / 环境检查两个页面。
+ * 面板主体：banner 导航 + 可折叠侧边菜单 + 首页 / 环境检查两个一级页面。
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
@@ -92,10 +92,8 @@ function HeroArt(): ReactElement {
   )
 }
 
-/** 顶部 banner：一级/二级导航与整体环境状态。 */
-function Banner({ page, report }: { page: Page; report: EnvironmentReport | null }): ReactElement {
-  const state = report === null ? '检测中' : report.ready ? '环境就绪' : '待配置'
-  const tone = report === null ? '' : report.ready ? ' is-ok' : ' is-warning'
+/** 顶部 banner：一级/二级导航。 */
+function Banner({ page }: { page: Page }): ReactElement {
   return (
     <header className="dsd-banner">
       <div className="dsd-brand">
@@ -110,23 +108,21 @@ function Banner({ page, report }: { page: Page; report: EnvironmentReport | null
       <nav className="dsd-crumbs" aria-label="当前位置">
         <span>数据科学示例</span>
         <span className="dsd-crumb-sep">/</span>
-        <span>首页</span>
-        {page === 'environment' ? (
+        {page === 'home' ? (
+          <span className="dsd-crumb-current">首页</span>
+        ) : (
           <>
+            <span>首页</span>
             <span className="dsd-crumb-sep">/</span>
             <span className="dsd-crumb-current">环境检查</span>
           </>
-        ) : null}
+        )}
       </nav>
-      <span className={`dsd-banner-status${tone}`}>
-        <span className="dsd-status-dot" />
-        {state}
-      </span>
     </header>
   )
 }
 
-/** 左侧可收缩菜单。 */
+/** 左侧可收缩菜单：首页与环境检查同为一级菜单。 */
 function Sidebar({
   page,
   collapsed,
@@ -178,33 +174,26 @@ function Sidebar({
       </div>
       <div className="dsd-menu">
         <button
-          className={`dsd-menu-item dsd-menu-parent${page === 'home' ? ' is-active' : ''}`}
+          className={`dsd-menu-item${page === 'home' ? ' is-active' : ''}`}
           onClick={() => onSelect('home')}
         >
           <IconHome />
           <span className="dsd-menu-label">首页</span>
-          <span className="dsd-chevron">
-            <IconChevron direction="down" size={11} />
-          </span>
         </button>
-        <div className="dsd-menu-sub">
-          <button
-            className={`dsd-menu-item${page === 'environment' ? ' is-active' : ''}`}
-            onClick={() => onSelect('environment')}
-          >
-            <IconEnv />
-            <span className="dsd-menu-label">环境检查</span>
-          </button>
-        </div>
+        <button
+          className={`dsd-menu-item${page === 'environment' ? ' is-active' : ''}`}
+          onClick={() => onSelect('environment')}
+        >
+          <IconEnv />
+          <span className="dsd-menu-label">环境检查</span>
+        </button>
       </div>
     </aside>
   )
 }
 
-/** 首页：插件简介。 */
-function HomePage({ report }: { report: EnvironmentReport | null }): ReactElement {
-  const environmentText =
-    report === null ? '正在检测本机环境…' : report.ready ? '本机环境已就绪，可以开始分析。' : '本机环境尚未配置，请前往环境检查。'
+/** 首页：纯静态介绍，不展示任何环境检查结果。 */
+function HomePage(): ReactElement {
   return (
     <section className="dsd-page dsd-home">
       <div className="dsd-hero">
@@ -212,13 +201,13 @@ function HomePage({ report }: { report: EnvironmentReport | null }): ReactElemen
           <span className="dsd-eyebrow">DATA SCIENCE WORKBENCH</span>
           <h1>数据科学示例</h1>
           <p>
-            一个运行在 DSH 中的数据科学工作台示例。先检查本机 Python 3.12 环境与依赖，
-            再在统一的浅色工作区里组织分析流程。
+            一个运行在 DSH 中的数据科学工作台示例。它负责准备本机分析环境：
+            检查 Python、在工作目录中创建独立虚拟环境，并按清单安装常用分析库。
           </p>
           <div className="dsd-hero-meta">
             <span className="dsd-pill">Python 3.12</span>
+            <span className="dsd-pill">.venv 隔离环境</span>
             <span className="dsd-pill">依赖清单驱动</span>
-            <span className="dsd-pill">本地执行</span>
           </div>
         </div>
         <div className="dsd-hero-art">
@@ -235,7 +224,7 @@ function HomePage({ report }: { report: EnvironmentReport | null }): ReactElemen
             环境检查
           </div>
           <p className="dsd-feature-body">
-            探测本机 Python 版本、解释器路径、pip 以及 conda / mamba，结果实时展示。
+            展示系统平台、Python 解释器与虚拟环境状态，按四个部分逐项检查。
           </p>
         </div>
         <div className="dsd-feature">
@@ -243,10 +232,10 @@ function HomePage({ report }: { report: EnvironmentReport | null }): ReactElemen
             <span className="dsd-feature-icon">
               <IconHome size={15} />
             </span>
-            自动安装
+            独立虚拟环境
           </div>
           <p className="dsd-feature-body">
-            缺少 Python 或依赖时，一键安装 Python 3.12 与依赖清单中的包，过程日志可见。
+            在当前工作目录创建 .venv，依赖与系统 Python 隔离，避免污染全局环境。
           </p>
         </div>
         <div className="dsd-feature">
@@ -257,7 +246,7 @@ function HomePage({ report }: { report: EnvironmentReport | null }): ReactElemen
             依赖清单
           </div>
           <p className="dsd-feature-body">
-            依赖统一放在 requirements.txt，新增包只需写进该文件，检查与安装都会自动读取。
+            依赖统一维护在 requirements.txt，安装时使用清华源加速，过程日志实时可见。
           </p>
         </div>
         <div className="dsd-feature">
@@ -268,17 +257,49 @@ function HomePage({ report }: { report: EnvironmentReport | null }): ReactElemen
             可扩展
           </div>
           <p className="dsd-feature-body">
-            当前提供环境检查示例，后续的数据分析能力会作为新的子菜单逐步加入。
+            当前提供环境准备能力，后续的数据分析功能会作为新的菜单逐步加入。
           </p>
         </div>
       </div>
-
-      <div className="dsd-link-note">{environmentText}</div>
     </section>
   )
 }
 
-/** 环境检查页。 */
+/** 一个小节的标题行。 */
+function SectionHead({
+  index,
+  title,
+  subtitle,
+  status,
+}: {
+  index: string
+  title: string
+  subtitle: string
+  status: ReactElement | null
+}): ReactElement {
+  return (
+    <div className="dsd-section-head">
+      <span className="dsd-section-index">{index}</span>
+      <div className="dsd-section-heading">
+        <div className="dsd-section-title">{title}</div>
+        <div className="dsd-section-sub">{subtitle}</div>
+      </div>
+      {status}
+    </div>
+  )
+}
+
+/** 状态徽标：绿色可用 / 橙色待处理。 */
+function Flag({ ok, children }: { ok: boolean; children: string }): ReactElement {
+  return (
+    <span className={`dsd-card-flag ${ok ? 'is-ok' : 'is-bad'}`}>
+      <span className="dsd-status-dot" />
+      {children}
+    </span>
+  )
+}
+
+/** 环境检查页：系统 / Python / 环境管理器 / 依赖清单 四部分。 */
 function EnvironmentPage({
   report,
   loading,
@@ -297,17 +318,17 @@ function EnvironmentPage({
   const logs = install?.logs ?? []
   const installing = install?.status === 'running'
   const logRef = useRef<HTMLPreElement | null>(null)
+  const [showPackages, setShowPackages] = useState(false)
 
   useEffect(() => {
     const element = logRef.current
     if (element !== null) element.scrollTop = element.scrollHeight
   }, [logs.length])
 
-  const pythonMissing = report !== null && (!report.python.found || !report.python.versionOk)
+  const pythonReady = report !== null && report.python.found && report.python.versionOk
+  const venvReady = report !== null && report.workspace.venvExists
   const missingDependencies =
     report === null ? [] : report.dependencies.filter(dependency => !dependency.installed)
-  const needsInstall = pythonMissing || missingDependencies.length > 0
-  const installLabel = pythonMissing ? '安装 Python 3.12 与依赖' : '安装缺失依赖'
 
   const statusText =
     install === null || install.status === 'idle'
@@ -323,18 +344,13 @@ function EnvironmentPage({
       <div className="dsd-page-head">
         <div>
           <h2>环境检查</h2>
-          <p className="dsd-page-sub">检查本机 Python 3.12、环境管理器与依赖清单。</p>
+          <p className="dsd-page-sub">系统、Python、虚拟环境与依赖清单。</p>
         </div>
         <div className="dsd-toolbar">
           <button className="dsd-button" onClick={onRefresh} disabled={loading || installing}>
             <IconRefresh />
             刷新
           </button>
-          {needsInstall ? (
-            <button className="dsd-button is-primary" onClick={onInstall} disabled={installing || loading}>
-              {installing ? '正在安装…' : installLabel}
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -349,40 +365,46 @@ function EnvironmentPage({
         <div className="dsd-empty">暂无环境信息，请点击刷新重试。</div>
       ) : (
         <>
-          <div className="dsd-env-grid">
-            <div className="dsd-card">
-              <div className="dsd-card-head">
-                <span className="dsd-card-label">系统</span>
-                <span className="dsd-card-flag is-ok">
-                  <span className="dsd-status-dot" />
-                  {report.system.arch}
-                </span>
-              </div>
-              <div className="dsd-kv">
+          <div className="dsd-env-stack">
+            <section className="dsd-card dsd-env-section">
+              <SectionHead
+                index="01"
+                title="系统"
+                subtitle="当前运行环境（静态信息）"
+                status={<Flag ok>{report.system.arch}</Flag>}
+              />
+              <div className="dsd-kv-grid">
                 <div className="dsd-kv-row">
                   <span className="dsd-kv-key">系统</span>
                   <span className="dsd-kv-value">{report.system.type} {report.system.release}</span>
                 </div>
                 <div className="dsd-kv-row">
-                  <span className="dsd-kv-key">架构</span>
-                  <span className="dsd-kv-value">{report.system.arch} · {report.system.platform}</span>
+                  <span className="dsd-kv-key">平台</span>
+                  <span className="dsd-kv-value">{report.system.platform} · {report.system.arch}</span>
                 </div>
                 <div className="dsd-kv-row">
                   <span className="dsd-kv-key">Node</span>
                   <span className="dsd-kv-value dsd-mono">{report.system.node}</span>
                 </div>
+                <div className="dsd-kv-row">
+                  <span className="dsd-kv-key">检查时间</span>
+                  <span className="dsd-kv-value dsd-mono">{report.checkedAt}</span>
+                </div>
               </div>
-            </div>
+            </section>
 
-            <div className="dsd-card">
-              <div className="dsd-card-head">
-                <span className="dsd-card-label">Python</span>
-                <span className={`dsd-card-flag ${report.python.found && report.python.versionOk ? 'is-ok' : 'is-bad'}`}>
-                  <span className="dsd-status-dot" />
-                  {!report.python.found ? '未找到' : report.python.versionOk ? '可用' : '版本不符'}
-                </span>
-              </div>
-              <div className="dsd-kv">
+            <section className="dsd-card dsd-env-section">
+              <SectionHead
+                index="02"
+                title="Python"
+                subtitle="系统解释器"
+                status={
+                  report.python.found
+                    ? <Flag ok={report.python.versionOk}>{report.python.versionOk ? '可用' : '版本不符'}</Flag>
+                    : <Flag ok={false}>未找到</Flag>
+                }
+              />
+              <div className="dsd-kv-grid">
                 <div className="dsd-kv-row">
                   <span className="dsd-kv-key">版本</span>
                   <span className="dsd-kv-value dsd-mono">{report.python.version ?? '—'}</span>
@@ -391,47 +413,91 @@ function EnvironmentPage({
                   <span className="dsd-kv-key">pip</span>
                   <span className="dsd-kv-value dsd-mono">{report.python.pipVersion ?? '未检测到'}</span>
                 </div>
-                <div className="dsd-kv-row">
+                <div className="dsd-kv-row dsd-kv-wide">
                   <span className="dsd-kv-key">路径</span>
                   <span className="dsd-kv-value dsd-mono">{report.python.executable ?? '—'}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="dsd-card">
-              <div className="dsd-card-head">
-                <span className="dsd-card-label">环境管理器</span>
-                <span className={`dsd-card-flag ${report.managers.length > 0 ? 'is-ok' : 'is-bad'}`}>
-                  <span className="dsd-status-dot" />
-                  {report.managers.length > 0 ? `${report.managers.length} 个` : '未检测到'}
-                </span>
-              </div>
-              {report.managers.length > 0 ? (
-                <div className="dsd-kv">
-                  {report.managers.map(manager => (
-                    <div className="dsd-kv-row" key={manager.name}>
-                      <span className="dsd-kv-key">{manager.name}</span>
-                      <span className="dsd-kv-value dsd-mono">{manager.version}</span>
-                    </div>
-                  ))}
+              {pythonReady ? null : (
+                <div className="dsd-action-row">
+                  <button className="dsd-button is-primary" onClick={onInstall} disabled={installing || loading}>
+                    {installing ? '正在安装…' : '安装 Python 3.12'}
+                  </button>
+                  <span className="dsd-action-hint">
+                    安装后会继续创建 .venv 并安装依赖清单。
+                  </span>
                 </div>
-              ) : (
-                <div className="dsd-empty">没有 conda / mamba，自动安装时会使用 python.org 官方安装包。</div>
               )}
-            </div>
+            </section>
 
-            <div className="dsd-card dsd-card-wide">
-              <div className="dsd-card-head">
-                <span className="dsd-card-label">依赖清单</span>
-                <span className={`dsd-card-flag ${missingDependencies.length > 0 ? 'is-bad' : 'is-ok'}`}>
-                  <span className="dsd-status-dot" />
-                  {report.dependencies.length === 0
-                    ? '清单为空'
-                    : missingDependencies.length === 0
-                      ? '全部已安装'
-                      : `缺少 ${missingDependencies.length} 项`}
-                </span>
+            <section className="dsd-card dsd-env-section">
+              <SectionHead
+                index="03"
+                title="环境管理器"
+                subtitle="当前工作目录中的独立虚拟环境"
+                status={
+                  venvReady
+                    ? <Flag ok>{report.workspace.pythonVersion ?? '已创建'}</Flag>
+                    : <Flag ok={false}>无 .venv</Flag>
+                }
+              />
+              <div className="dsd-kv-grid">
+                <div className="dsd-kv-row dsd-kv-wide">
+                  <span className="dsd-kv-key">工作目录</span>
+                  <span className="dsd-kv-value dsd-mono">{report.workspace.path}</span>
+                </div>
+                <div className="dsd-kv-row dsd-kv-wide">
+                  <span className="dsd-kv-key">.venv</span>
+                  <span className="dsd-kv-value dsd-mono">{report.workspace.venvPath}</span>
+                </div>
+                {venvReady ? (
+                  <>
+                    <div className="dsd-kv-row">
+                      <span className="dsd-kv-key">Python</span>
+                      <span className="dsd-kv-value dsd-mono">{report.workspace.pythonVersion ?? '—'}</span>
+                    </div>
+                    <div className="dsd-kv-row">
+                      <span className="dsd-kv-key">pip</span>
+                      <span className="dsd-kv-value dsd-mono">{report.workspace.pipVersion ?? '—'}</span>
+                    </div>
+                  </>
+                ) : null}
+                <div className="dsd-kv-row dsd-kv-wide">
+                  <span className="dsd-kv-key">conda/mamba</span>
+                  <span className="dsd-kv-value">
+                    {report.managers.length === 0
+                      ? '未检测到（安装 Python 时回退到官方安装包）'
+                      : report.managers.map(manager => `${manager.name} ${manager.version}`).join(' · ')}
+                  </span>
+                </div>
               </div>
+              {pythonReady && !venvReady ? (
+                <div className="dsd-action-row">
+                  <button className="dsd-button is-primary" onClick={onInstall} disabled={installing || loading}>
+                    {installing ? '正在安装…' : '创建 .venv 并安装依赖'}
+                  </button>
+                  <span className="dsd-action-hint">
+                    使用 python -m venv .venv，随后升级 pip 并按清华源安装依赖。
+                  </span>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="dsd-card dsd-env-section">
+              <SectionHead
+                index="04"
+                title="依赖清单"
+                subtitle="requirements.txt 中的直接依赖"
+                status={
+                  <Flag ok={missingDependencies.length === 0 && report.dependencies.length > 0}>
+                    {report.dependencies.length === 0
+                      ? '清单为空'
+                      : missingDependencies.length === 0
+                        ? '全部已安装'
+                        : `缺少 ${missingDependencies.length} 项`}
+                  </Flag>
+                }
+              />
               {report.dependencies.length === 0 ? (
                 <div className="dsd-empty">requirements.txt 中没有依赖条目。</div>
               ) : (
@@ -446,17 +512,51 @@ function EnvironmentPage({
                       {dependency.installed ? (
                         <span className="dsd-mono">{dependency.version}</span>
                       ) : (
-                        <span>{dependency.requirement || '未安装'}</span>
+                        <span>未安装</span>
                       )}
                     </span>
                   ))}
                 </div>
               )}
+
+              {venvReady && missingDependencies.length > 0 ? (
+                <div className="dsd-action-row">
+                  <button className="dsd-button is-primary" onClick={onInstall} disabled={installing || loading}>
+                    {installing ? '正在安装…' : '安装缺失依赖'}
+                  </button>
+                  <span className="dsd-action-hint">
+                    使用清华源安装，已安装的包会跳过。
+                  </span>
+                </div>
+              ) : null}
+
+              {venvReady ? (
+                <div className="dsd-packages">
+                  <button
+                    className="dsd-packages-toggle"
+                    onClick={() => setShowPackages(value => !value)}
+                  >
+                    <IconChevron direction={showPackages ? 'down' : 'right'} size={11} />
+                    查看 pip list（{report.installedPackages.length} 个已安装包）
+                  </button>
+                  {showPackages ? (
+                    <div className="dsd-package-list">
+                      {report.installedPackages.map(entry => (
+                        <div className="dsd-package-row" key={entry.name}>
+                          <span className="dsd-package-name">{entry.name}</span>
+                          <span className="dsd-mono">{entry.version}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {report.dependenciesError !== null ? (
-                <div className="dsd-link-note">读取依赖状态时出错：{report.dependenciesError}</div>
+                <div className="dsd-link-note">依赖状态：{report.dependenciesError}</div>
               ) : null}
               <div className="dsd-link-note">清单文件：{report.requirementsFile}</div>
-            </div>
+            </section>
           </div>
 
           {install !== null && install.status === 'failed' && install.error !== null ? (
@@ -477,7 +577,7 @@ function EnvironmentPage({
             <div className="dsd-log-hint">
               {installing
                 ? '安装进行中，日志会自动刷新；完成后环境信息会自动重新检测。'
-                : '安装使用本机已有的 Python 3.12；没有时优先使用 mamba / conda，最后回退到 python.org 官方安装包。'}
+                : '安装流程：确认 Python 3.12 → python -m venv .venv → 升级 pip/setuptools/wheel → 按清华源安装依赖。'}
             </div>
           </div>
         </>
@@ -555,7 +655,7 @@ export function App(): ReactElement {
 
   return (
     <div className="dsd-app">
-      <Banner page={page} report={report} />
+      <Banner page={page} />
       <div className="dsd-body">
         <Sidebar
           page={page}
@@ -565,7 +665,7 @@ export function App(): ReactElement {
         />
         <main className="dsd-main">
           {page === 'home' ? (
-            <HomePage report={report} />
+            <HomePage />
           ) : (
             <EnvironmentPage
               report={report}

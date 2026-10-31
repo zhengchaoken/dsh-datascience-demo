@@ -1,22 +1,30 @@
 /**
  * 环境自动安装任务。
  *
- * 策略按可用性依次降级：
- *  1. 已存在 3.12 解释器 → 直接安装依赖；
- *  2. 存在 mamba / conda / micromamba → 在插件数据目录建独立环境；
- *  3. Windows x64 且以上都没有 → 下载 python.org 官方安装包静默安装到数据目录。
+ * 流程：
+ *  1. 确保存在 Python 3.12（复用本机解释器，缺失时用 mamba/conda 或官方安装包）；
+ *  2. 在当前工作目录创建 `.venv`（已存在则跳过）；
+ *  3. 升级 venv 的 pip / setuptools / wheel；
+ *  4. 按清华源安装 requirements.txt 中的依赖。
  *
  * 全程同步记录日志，接口只负责读取快照；安装过程永不抛出未捕获异常。
  */
 
 import { spawn } from 'node:child_process'
-import { createWriteStream, existsSync, mkdirSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { InstallState } from '../protocol.ts'
-import { REQUIREMENTS_FILE, probeManagers, probePython } from './probe.ts'
+import {
+  REQUIREMENTS_FILE,
+  probeManagers,
+  probePython,
+  resolveWorkspace,
+  venvPaths,
+  venvPythonPath,
+} from './probe.ts'
 
 /** 自动安装固定使用的 Python 版本。 */
 const PYTHON_VERSION = '3.12.10'
@@ -24,6 +32,12 @@ const PYTHON_VERSION = '3.12.10'
 /** python.org 官方 Windows x64 安装包地址。 */
 const PYTHON_INSTALLER_URL =
   `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-amd64.exe`
+
+/** 依赖安装使用的 PyPI 镜像。 */
+const PYPI_INDEX_URL = 'https://pypi.tuna.tsinghua.edu.cn/simple'
+
+/** 镜像对应的可信主机。 */
+const PYPI_TRUSTED_HOST = 'pypi.tuna.tsinghua.edu.cn'
 
 /** 日志上限，避免长安装把内存撑大。 */
 const MAX_LOG_LINES = 800
@@ -85,12 +99,16 @@ export class InstallController {
 
   /** 主流程。 */
   private async run(): Promise<void> {
-    const dataDir = resolveDataDir()
-    mkdirSync(dataDir, { recursive: true })
-    this.log(`数据目录：${dataDir}`)
+    const workspace = resolveWorkspace()
+    const { venvPath } = venvPaths(workspace)
+    mkdirSync(workspace, { recursive: true })
+    this.log(`工作目录：${workspace}`)
+    this.log(`虚拟环境：${venvPath}`)
 
-    const pythonPath = await this.ensurePython(dataDir)
-    await this.installRequirements(pythonPath)
+    const systemPython = await this.ensurePython()
+    const venvPython = await this.ensureVenv(systemPython, venvPath)
+    await this.upgradePackaging(venvPython)
+    await this.installRequirements(venvPython)
 
     this.flushPending()
     this.state.status = 'succeeded'
@@ -99,8 +117,8 @@ export class InstallController {
   }
 
   /** 找到或安装一个可用的 3.12 解释器。 */
-  private async ensurePython(dataDir: string): Promise<string> {
-    this.log('检查本地 Python…')
+  private async ensurePython(): Promise<string> {
+    this.log('检查本机 Python…')
     const existing = await probePython()
     if (existing.found && existing.executable !== null && existing.versionOk) {
       this.log(`使用已有 Python ${existing.version}：${existing.executable}`)
@@ -117,13 +135,9 @@ export class InstallController {
     const manager = managers[0]
     if (manager !== undefined) {
       this.log(`使用 ${manager.name} ${manager.version} 创建独立环境。`)
-      const prefix = join(dataDir, 'env')
-      await this.runCommand(
-        manager.name,
-        ['create', '-y', '-p', prefix, 'python=3.12', 'pip'],
-        true,
-      )
-      const pythonPath = join(prefix, process.platform === 'win32' ? 'python.exe' : 'bin/python')
+      const prefix = join(resolveDataDir(), 'python-env')
+      await this.runCommand(manager.name, ['create', '-y', '-p', prefix, 'python=3.12', 'pip'], true)
+      const pythonPath = join(prefix, 'python.exe')
       if (!existsSync(pythonPath)) {
         throw new Error(`${manager.name} 执行完成，但没有找到 ${pythonPath}`)
       }
@@ -131,11 +145,11 @@ export class InstallController {
     }
 
     this.log('未检测到 mamba / conda，改用官方安装包。')
-    return await this.installBundledPython(dataDir)
+    return await this.installBundledPython()
   }
 
   /** 下载并静默安装 python.org 的 Windows 安装包。 */
-  private async installBundledPython(dataDir: string): Promise<string> {
+  private async installBundledPython(): Promise<string> {
     if (process.platform !== 'win32' || process.arch !== 'x64') {
       throw new Error(
         `当前平台 ${process.platform}/${process.arch} 不在自动安装范围内，` +
@@ -143,6 +157,8 @@ export class InstallController {
       )
     }
 
+    const dataDir = resolveDataDir()
+    mkdirSync(dataDir, { recursive: true })
     const installer = join(dataDir, `python-${PYTHON_VERSION}-amd64.exe`)
     const target = join(dataDir, 'python')
 
@@ -181,14 +197,55 @@ export class InstallController {
     return pythonPath
   }
 
-  /** 按依赖清单安装 Python 包。 */
-  private async installRequirements(pythonPath: string): Promise<void> {
-    this.log(`安装依赖清单：${REQUIREMENTS_FILE}`)
-    await this.runCommand(pythonPath, [
+  /** 在当前工作目录创建 `.venv`，返回其中的解释器。 */
+  private async ensureVenv(systemPython: string, venvPath: string): Promise<string> {
+    const venvPython = venvPythonPath(venvPath)
+    if (existsSync(venvPython)) {
+      this.log(`已有虚拟环境：${venvPath}`)
+      return venvPython
+    }
+
+    if (existsSync(venvPath)) {
+      this.log(`发现不完整的虚拟环境，先清理：${venvPath}`)
+      rmSync(venvPath, { recursive: true, force: true })
+    }
+
+    this.log('创建虚拟环境：python -m venv .venv')
+    await this.runCommand(systemPython, ['-m', 'venv', venvPath])
+    if (!existsSync(venvPython)) {
+      throw new Error(`venv 创建完成，但没有找到 ${venvPython}`)
+    }
+    this.log(`虚拟环境已创建：${venvPath}`)
+    return venvPython
+  }
+
+  /** 升级 venv 的构建工具。 */
+  private async upgradePackaging(venvPython: string): Promise<void> {
+    this.log('升级 pip / setuptools / wheel…')
+    await this.runCommand(venvPython, [
       '-m',
       'pip',
       'install',
       '--disable-pip-version-check',
+      '--upgrade',
+      'pip',
+      'setuptools',
+      'wheel',
+    ])
+  }
+
+  /** 按清华源安装依赖清单。 */
+  private async installRequirements(venvPython: string): Promise<void> {
+    this.log(`安装依赖清单：${REQUIREMENTS_FILE}`)
+    await this.runCommand(venvPython, [
+      '-m',
+      'pip',
+      'install',
+      '--disable-pip-version-check',
+      '--index-url',
+      PYPI_INDEX_URL,
+      '--trusted-host',
+      PYPI_TRUSTED_HOST,
       '-r',
       REQUIREMENTS_FILE,
     ])
@@ -197,7 +254,7 @@ export class InstallController {
   /** 执行子进程并把输出逐行写进日志。 */
   private runCommand(file: string, args: readonly string[], shell = false): Promise<void> {
     this.log(`$ ${file} ${args.join(' ')}`)
-    return new Promise((resolve, reject) => {
+    return new Promise((resolvePromise, reject) => {
       const child = spawn(file, args, {
         windowsHide: true,
         shell,
@@ -217,7 +274,7 @@ export class InstallController {
       })
       child.on('close', (code: number | null) => {
         this.flushPending()
-        if (code === 0) resolve()
+        if (code === 0) resolvePromise()
         else reject(new Error(`命令退出码 ${code ?? '未知'}：${file}`))
       })
     })

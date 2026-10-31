@@ -50,6 +50,28 @@ export interface SystemInfo {
   node: string
 }
 
+/** 当前工作区与其中的 `.venv`。 */
+export interface WorkspaceInfo {
+  /** 工作目录绝对路径：默认是宿主进程 cwd，可用 DSD_WORKSPACE 覆盖。 */
+  path: string
+  /** `.venv` 目录绝对路径。 */
+  venvPath: string
+  /** `.venv` 是否已创建。 */
+  venvExists: boolean
+  /** `.venv` 里的 Python 解释器路径。 */
+  python: string | null
+  /** `.venv` 的 Python 版本。 */
+  pythonVersion: string | null
+  /** `.venv` 的 pip 版本。 */
+  pipVersion: string | null
+}
+
+/** pip 已安装的一个包。 */
+export interface InstalledPackage {
+  name: string
+  version: string
+}
+
 /** 安装任务的公开状态。 */
 export type InstallStatus = 'idle' | 'running' | 'succeeded' | 'failed'
 
@@ -71,8 +93,12 @@ export interface EnvironmentReport {
   system: SystemInfo
   python: PythonInfo
   managers: ManagerInfo[]
+  /** 当前工作目录与其 `.venv`。 */
+  workspace: WorkspaceInfo
   dependencies: DependencyInfo[]
-  /** Python 3.12 可用且依赖齐全。 */
+  /** `.venv` 中的完整 pip 包列表。 */
+  installedPackages: InstalledPackage[]
+  /** Python 3.12 可用、`.venv` 已创建且依赖齐全。 */
   ready: boolean
   /** 读取依赖清单或 pip 列表时的错误。 */
   dependenciesError: string | null

@@ -8,15 +8,17 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import os from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import type {
   DependencyInfo,
   EnvironmentReport,
   InstallState,
+  InstalledPackage,
   ManagerInfo,
   PythonInfo,
+  WorkspaceInfo,
 } from '../protocol.ts'
 
 const execFileAsync = promisify(execFile)
@@ -181,50 +183,109 @@ export async function probeManagers(): Promise<ManagerInfo[]> {
   return found
 }
 
-/** 读取 pip 已安装列表。 */
-async function probeInstalled(python: PythonInfo): Promise<{
+/** 当前工作目录：默认取宿主进程 cwd，可用 DSD_WORKSPACE 覆盖。 */
+export function resolveWorkspace(): string {
+  const override = process.env['DSD_WORKSPACE']
+  return override !== undefined && override.trim() !== '' ? resolve(override.trim()) : process.cwd()
+}
+
+/** `.venv` 中的解释器路径。 */
+export function venvPythonPath(venvPath: string): string {
+  return process.platform === 'win32'
+    ? join(venvPath, 'Scripts', 'python.exe')
+    : join(venvPath, 'bin', 'python')
+}
+
+/** 为工作区准备 `.venv` 路径。 */
+export function venvPaths(workspace = resolveWorkspace()): { workspace: string; venvPath: string } {
+  const venvPath = join(workspace, '.venv')
+  return { workspace, venvPath }
+}
+
+/** 探测 `.venv` 与其中的包。 */
+async function probeWorkspace(): Promise<{
+  workspace: WorkspaceInfo
   installed: Map<string, string>
+  packages: InstalledPackage[]
   error: string | null
 }> {
-  if (!python.found || python.executable === null) {
-    return { installed: new Map(), error: '未找到可用的 Python 解释器' }
+  const { workspace, venvPath } = venvPaths()
+  const pythonPath = venvPythonPath(venvPath)
+  const venvExists = existsSync(venvPath) && existsSync(pythonPath)
+
+  if (!venvExists) {
+    return {
+      workspace: {
+        path: workspace,
+        venvPath,
+        venvExists: false,
+        python: null,
+        pythonVersion: null,
+        pipVersion: null,
+      },
+      installed: new Map(),
+      packages: [],
+      error: '当前工作目录还没有 .venv',
+    }
   }
-  const result = await capture(
-    python.executable,
+
+  const versionResult = await capture(pythonPath, ['-c', 'import platform;print(platform.python_version())'])
+  const version = versionResult.ok ? versionResult.stdout.trim() : null
+  const pipVersionResult = await capture(pythonPath, ['-m', 'pip', '--version'])
+  const pipVersion = pipVersionResult.ok ? firstVersion(pipVersionResult.stdout) : null
+
+  const listResult = await capture(
+    pythonPath,
     ['-m', 'pip', 'list', '--format', 'json', '--disable-pip-version-check'],
     30000,
   )
-  if (!result.ok) {
-    const firstLine = result.stderr.split(/\r?\n/u).find(line => line.trim() !== '')
-    return {
-      installed: new Map(),
-      error: firstLine === undefined ? '读取 pip 包列表失败' : firstLine.trim(),
+
+  let installed = new Map<string, string>()
+  let packages: InstalledPackage[] = []
+  let error: string | null = null
+  if (listResult.ok) {
+    try {
+      const parsed = JSON.parse(listResult.stdout) as { name?: unknown; version?: unknown }[]
+      for (const entry of parsed) {
+        if (typeof entry.name !== 'string' || typeof entry.version !== 'string') continue
+        installed.set(normalizeName(entry.name), entry.version)
+        packages.push({ name: entry.name, version: entry.version })
+      }
+    } catch {
+      installed = new Map()
+      error = 'pip 包列表不是合法 JSON'
     }
+  } else {
+    const firstLine = listResult.stderr.split(/\r?\n/u).find(line => line.trim() !== '')
+    error = firstLine === undefined ? '读取 pip 包列表失败' : firstLine.trim()
   }
-  try {
-    const parsed = JSON.parse(result.stdout) as { name?: unknown; version?: unknown }[]
-    const installed = new Map<string, string>()
-    for (const entry of parsed) {
-      if (typeof entry.name !== 'string' || typeof entry.version !== 'string') continue
-      installed.set(normalizeName(entry.name), entry.version)
-    }
-    return { installed, error: null }
-  } catch {
-    return { installed: new Map(), error: 'pip 包列表不是合法 JSON' }
+
+  return {
+    workspace: {
+      path: workspace,
+      venvPath,
+      venvExists,
+      python: pythonPath,
+      pythonVersion: version,
+      pipVersion,
+    },
+    installed,
+    packages,
+    error,
   }
 }
 
 /** 执行一次完整环境探测。 */
 export async function probeEnvironment(install: InstallState): Promise<EnvironmentReport> {
   const python = await probePython()
-  const [managers, packages, requirements] = await Promise.all([
+  const [managers, venv, requirements] = await Promise.all([
     probeManagers(),
-    probeInstalled(python),
+    probeWorkspace(),
     Promise.resolve(readRequirements()),
   ])
 
   const dependencies: DependencyInfo[] = requirements.entries.map(entry => {
-    const version = packages.installed.get(normalizeName(entry.name)) ?? null
+    const version = venv.installed.get(normalizeName(entry.name)) ?? null
     return {
       name: entry.name,
       requirement: entry.requirement,
@@ -243,13 +304,16 @@ export async function probeEnvironment(install: InstallState): Promise<Environme
     },
     python,
     managers,
+    workspace: venv.workspace,
     dependencies,
+    installedPackages: venv.packages,
     ready:
       python.found &&
       python.versionOk &&
+      venv.workspace.venvExists &&
       dependencies.length > 0 &&
       dependencies.every(dependency => dependency.installed),
-    dependenciesError: requirements.error ?? packages.error,
+    dependenciesError: requirements.error ?? venv.error,
     requirementsFile: REQUIREMENTS_FILE,
     checkedAt: new Date().toISOString(),
     install,
