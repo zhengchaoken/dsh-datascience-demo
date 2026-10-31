@@ -1,5 +1,5 @@
 /**
- * 示例数据集（src/data/ecommerce.db）的只读访问层。
+ * 示例数据集（src/data/ecommerce/ecommerce.db）的只读访问层。
  *
  * 查询引擎用 Node 内置的 `node:sqlite`，零第三方依赖；宿主 Node 版本过旧
  * （没有内置 sqlite）时动态导入失败，路由层返回可读错误而不是让插件崩溃。
@@ -18,12 +18,12 @@ import type {
   DatasetInfo,
   DatasetQueryResult,
   DatasetTableInfo,
-} from '../protocol.ts'
+} from '../../protocol.ts'
 
 /** 单次查询最多返回的行数；超出部分截断并在响应里标记。 */
 export const MAX_ROWS = 1000
 
-/** 表元信息：中文名称、说明与逐字段注释，与 src/data/schema.sql 保持一致。 */
+/** 表元信息：中文名称、说明与逐字段注释，与 src/data/ecommerce/schema.sql 保持一致。 */
 interface TableMeta {
   name: string
   label: string
@@ -170,13 +170,13 @@ export const TABLE_METAS: TableMeta[] = [
 /**
  * 数据库文件的包内相对路径，界面展示与错误提示统一用它，不暴露宿主机绝对路径。
  */
-export const DB_RELATIVE_PATH = 'src/data/ecommerce.db'
+export const DB_RELATIVE_PATH = 'src/data/ecommerce/ecommerce.db'
 
 /**
  * 解析出绝对路径：构建产物在 lib/ 下（向上一级即包根），tsx 直跑源码时在
- * src/data/ 下（向上两级），按存在性取第一个命中。仅用于打开数据库。
+ * src/data/ecommerce/ 下（向上三级），按存在性取第一个命中。仅用于打开数据库。
  */
-const DB_FILE = ['../src/data/ecommerce.db', '../../src/data/ecommerce.db']
+const DB_FILE = ['../src/data/ecommerce/ecommerce.db', '../../../src/data/ecommerce/ecommerce.db']
   .map(candidate => fileURLToPath(new URL(candidate, import.meta.url)))
   .find(candidate => existsSync(candidate))!
 

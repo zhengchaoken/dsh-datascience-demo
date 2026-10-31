@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 电商分析数据集 DDL（MySQL 版本）
 --
--- 源文件：src/data/schema.sql（SQLite 方言）+ src/data/ecommerce.db
+-- 源文件：src/data/ecommerce/schema.sql（SQLite 方言）+ src/data/ecommerce/ecommerce.db
 -- 兼容性：MySQL 5.7 / 8.3（未使用 CHECK 约束、函数索引等 8.0 专有特性）
 -- 说明：表与字段均带中文 COMMENT；字符集统一 utf8mb4。
 -- ============================================================================

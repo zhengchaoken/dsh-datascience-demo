@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 电商分析数据集 INSERT 数据（通用 SQL）
 --
--- 源数据：src/data/ecommerce.db
+-- 源数据：src/data/ecommerce/ecommerce.db
 -- 生成时间：2026-10-31 16:24:18
 -- 表顺序：categories -> customers -> products -> coupons -> orders
 --          -> order_items -> payments -> reviews -> user_events

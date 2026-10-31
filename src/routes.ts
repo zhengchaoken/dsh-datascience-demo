@@ -10,7 +10,7 @@ import type { WebRoute } from './webserver-types.ts'
 import { errorMessage, readJsonBody, writeError, writeJson } from './http.ts'
 import { probeEnvironment } from './env/probe.ts'
 import type { InstallController } from './env/install.ts'
-import { describeDataset, runDatasetQuery } from './data/dataset.ts'
+import { describeDataset, runDatasetQuery } from './data/ecommerce/dataset.ts'
 
 /** 注册这组路由所需的依赖。 */
 export interface RoutesDeps {

@@ -114,7 +114,7 @@ export interface DatasetTableInfo {
 export interface DatasetInfo {
   /** 查询引擎标识，当前为 node:sqlite。 */
   engine: string
-  /** 数据库文件的包内相对路径，例如 `src/data/ecommerce.db`。 */
+  /** 数据库文件的包内相对路径，例如 `src/data/ecommerce/ecommerce.db`。 */
   dbFile: string
   tables: DatasetTableInfo[]
 }

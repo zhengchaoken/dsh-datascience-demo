@@ -934,7 +934,7 @@ function KnowledgeGraph(): ReactElement {
   )
 }
 
-/** 概览页的关键业务术语（口径来自 src/data/README.md）。 */
+/** 概览页的关键业务术语（口径来自 src/data/ecommerce/README.md）。 */
 const DATASET_TERMS: { term: string; definition: string; sql: string }[] = [
   { term: 'GMV', definition: '已完成+已发货订单的实付合计', sql: "SUM(total_amount) WHERE order_status IN ('已完成','已发货')" },
   { term: '客单价', definition: 'GMV / 订单数', sql: 'SUM(total_amount) / COUNT(*)' },
@@ -948,7 +948,7 @@ const DATASET_TERMS: { term: string; definition: string; sql: string }[] = [
   { term: 'RFM', definition: '最近消费 / 频率 / 金额三维分群', sql: '基于 orders 按客户聚合' },
 ]
 
-/** 示例数据概览页：整体介绍电商数据集（内容基于 src/data/README.md）。 */
+/** 示例数据概览页：整体介绍电商数据集（内容基于 src/data/ecommerce/README.md）。 */
 function DatasetOverviewPage({
   dataset,
   error,

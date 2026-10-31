@@ -15,8 +15,8 @@
 
 ```powershell
 # 在项目根目录的 .venv 环境下
-python data/ecommerce/generate_dataset.py --force   # 生成/重建 ecommerce.db
-python data/ecommerce/_verify.py                     # 校验外键与金额一致性
+python src/data/ecommerce/generate_dataset.py --force   # 生成/重建 ecommerce.db
+python src/data/ecommerce/_verify.py                     # 校验外键与金额一致性
 ```
 
 数据规模（种子 42）：
