@@ -88,6 +88,52 @@ export interface InstallState {
   logs: string[]
 }
 
+/** 示例数据集里一个字段的说明。 */
+export interface DatasetColumnInfo {
+  name: string
+  /** SQLite 声明类型，例如 INTEGER / TEXT / REAL。 */
+  type: string
+  /** 字段业务含义（与 schema.sql 行内注释一致）。 */
+  comment: string
+}
+
+/** 示例数据集中一张表的元信息。 */
+export interface DatasetTableInfo {
+  /** SQL 表名，例如 orders。 */
+  name: string
+  /** 中文名称，例如「订单表」。 */
+  label: string
+  /** 一句话业务说明。 */
+  description: string
+  /** 当前行数。 */
+  rowCount: number
+  columns: DatasetColumnInfo[]
+}
+
+/** `GET /dataset` 的响应：数据集整体描述。 */
+export interface DatasetInfo {
+  /** 查询引擎标识，当前为 node:sqlite。 */
+  engine: string
+  /** 数据库文件绝对路径。 */
+  dbFile: string
+  tables: DatasetTableInfo[]
+}
+
+/** `POST /dataset/query` 的响应。 */
+export interface DatasetQueryResult {
+  columns: string[]
+  /** 按 columns 顺序排列的行值；SQLite NULL 序列化为 null。 */
+  rows: (string | number | null)[][]
+  /** 本次返回的行数（= rows.length）。 */
+  rowCount: number
+  /** 命中行数超过单次上限被截断。 */
+  truncated: boolean
+  /** 单次返回行数上限。 */
+  maxRows: number
+  /** 查询耗时（毫秒）。 */
+  elapsedMs: number
+}
+
 /** 一次环境检查的完整结果。 */
 export interface EnvironmentReport {
   system: SystemInfo

@@ -7,9 +7,10 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from './webserver-types.ts'
-import { errorMessage, writeError, writeJson } from './http.ts'
+import { errorMessage, readJsonBody, writeError, writeJson } from './http.ts'
 import { probeEnvironment } from './env/probe.ts'
 import type { InstallController } from './env/install.ts'
+import { describeDataset, runDatasetQuery } from './data/dataset.ts'
 
 /** 注册这组路由所需的依赖。 */
 export interface RoutesDeps {
@@ -49,6 +50,36 @@ export function makeRoutes(deps: RoutesDeps): { routes: WebRoute[] } {
           return
         }
         writeError(res, 405, '只支持 GET 或 POST')
+        return
+      }
+
+      if (pathname === '/api/dsh-datascience/dataset') {
+        if (req.method !== 'GET') {
+          writeError(res, 405, '只支持 GET')
+          return
+        }
+        writeJson(res, 200, await describeDataset())
+        return
+      }
+
+      if (pathname === '/api/dsh-datascience/dataset/query') {
+        if (req.method !== 'POST') {
+          writeError(res, 405, '只支持 POST')
+          return
+        }
+        const body = await readJsonBody(req)
+        const sql =
+          typeof body === 'object' && body !== null ? (body as { sql?: unknown }).sql : undefined
+        if (typeof sql !== 'string' || sql.trim() === '') {
+          writeError(res, 400, '缺少 SQL 语句')
+          return
+        }
+        try {
+          writeJson(res, 200, await runDatasetQuery(sql))
+        } catch (failure) {
+          // SQL 校验失败与 SQLite 语法错误都属于可预期的用户输入错误，按 400 返回。
+          writeError(res, 400, errorMessage(failure))
+        }
         return
       }
 

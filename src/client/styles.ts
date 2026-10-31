@@ -593,6 +593,197 @@ export const APP_CSS = `
   overflow-wrap: anywhere;
 }
 
+/* ---------- dataset ---------- */
+.dsd-menu-sub .dsd-menu-item {
+  padding: 6px 9px;
+  font-size: 12.5px;
+  color: #42536b;
+}
+.dsd-menu-sub .dsd-menu-item svg { flex: 0 0 auto; opacity: 0.7; }
+.dsd-menu-sub .dsd-menu-item.is-active { color: var(--dsd-accent); }
+.dsd-menu-sub-name {
+  flex: 0 0 auto;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 10px;
+  color: #96a5bc;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.dsd-menu-item.is-active .dsd-menu-sub-name { color: var(--dsd-accent); }
+.dsd-page-wide { max-width: 1240px; }
+.dsd-page-table-name {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--dsd-muted);
+}
+.dsd-fact-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #42536b;
+}
+.dsd-alert-warn {
+  border-color: #f0d9b5;
+  background: #fffaf1;
+  color: var(--dsd-warn);
+}
+
+/* SQL 编辑区 */
+.dsd-sql-panel {
+  margin-top: 14px;
+  border: 1px solid var(--dsd-line);
+  border-radius: 12px;
+  background: var(--dsd-surface);
+  overflow: hidden;
+}
+.dsd-sql-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dsd-line);
+  background: #fbfdff;
+}
+.dsd-sql-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--dsd-muted);
+}
+.dsd-sql-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 64px;
+  max-height: 240px;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+}
+.dsd-sql-input.is-invalid { background: #fff8f7; }
+.dsd-sql-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px dashed var(--dsd-line);
+}
+.dsd-sql-error { font-size: 11.5px; color: var(--dsd-danger); }
+
+/* 结果表格：横向与纵向都可滚动 */
+.dsd-result-panel {
+  margin-top: 14px;
+  border: 1px solid var(--dsd-line);
+  border-radius: 12px;
+  background: var(--dsd-surface);
+  overflow: hidden;
+}
+.dsd-grid-scroll {
+  overflow: auto;
+  max-width: 100%;
+}
+.dsd-result-scroll { max-height: 480px; }
+.dsd-grid {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+}
+.dsd-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  background: #f4f8fe;
+  border-bottom: 1px solid var(--dsd-line);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b4c63;
+  text-align: left;
+  white-space: nowrap;
+}
+.dsd-grid td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #eef2f8;
+  color: #2c3a4f;
+  white-space: nowrap;
+}
+.dsd-grid tbody tr:hover td { background: #f6faff; }
+.dsd-grid td.is-num, .dsd-grid th.is-num {
+  text-align: right;
+  font-family: "Cascadia Mono", Consolas, monospace;
+}
+.dsd-grid td.is-null {
+  color: #a3b1c6;
+  font-style: italic;
+}
+.dsd-grid td.is-text {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dsd-grid .dsd-grid-index {
+  color: #9aa9bf;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 10.5px;
+  text-align: right;
+  background: #fafcfe;
+}
+.dsd-grid tr.is-link { cursor: pointer; }
+.dsd-grid tr.is-link:hover td { background: var(--dsd-accent-soft); }
+.dsd-table-scale { margin-top: 12px; }
+.dsd-table-scale .dsd-grid-scroll { max-height: 320px; }
+
+/* 底部统计条 */
+.dsd-result-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--dsd-line);
+  background: #fbfdff;
+  font-size: 11.5px;
+  color: var(--dsd-muted);
+}
+.dsd-stat-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--dsd-line);
+}
+
+/* 字段说明 */
+.dsd-columns { margin-top: 14px; }
+.dsd-column-list {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--dsd-line);
+  border-radius: 8px;
+  background: #fbfdff;
+}
+.dsd-column-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 11.5px;
+}
+.dsd-column-name { flex: 0 0 150px; color: #334155; }
+.dsd-column-type { flex: 0 0 70px; color: #96a5bc; font-size: 10.5px; }
+.dsd-column-comment { flex: 1 1 auto; min-width: 0; color: var(--dsd-muted); }
+
 @media (max-width: 1100px) {
   .dsd-hero-art { display: none; }
 }
