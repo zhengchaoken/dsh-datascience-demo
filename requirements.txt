@@ -1,0 +1,9 @@
+# dsh-datascience-demo 的 Python 依赖清单。
+#
+# 环境检查与自动安装都会读取本文件。后续新增依赖，直接追加到下面的列表。
+# 支持标准的 requirements.txt 写法（版本约束会被检查逻辑忽略，只判断是否已安装）。
+
+numpy>=1.26
+pandas>=2.2
+matplotlib>=3.8
+scipy>=1.12

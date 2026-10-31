@@ -4,13 +4,19 @@ A **Data Science Demo** plugin for DeepSeek Harness (DSH). Package name
 `dsh-datascience-demo`, plugin id `datascience-demo`.
 
 Once installed, a **数据科学示例** entry appears in the sidebar's plugins area.
-Clicking it opens a blank panel in the main column.
+Clicking it opens the Data Science Demo workspace: a home introduction plus an
+Environment Check page that probes Python 3.12, conda/mamba, and the dependency
+list, with one-click installation.
 
 ## Layout
 
 ```text
-src/index.ts         host half (cordis plugin row, no host capability yet)
-src/client/index.ts  browser half: sidebar entry + blank main panel
+src/index.ts         host half: environment and install routes
+src/routes.ts        /api/dsh-datascience route family
+src/env/             environment probe and installer
+src/client/index.ts  browser half: sidebar entry + workspace panel
+src/client/App.tsx   home and environment-check UI
+requirements.txt     Python dependency list
 scripts/build.ts     esbuild build script
 cordis.patch.yml     bundle patch inserting the plugin row
 lib/                 build output (index.js / client.js)
@@ -19,7 +25,7 @@ lib/                 build output (index.js / client.js)
 The plugin uses only official DSH slots:
 
 - `sidebar.panellist` — sidebar entry with id `datascience-demo`
-- `main` (keyed) — blank panel with the same key
+- `main` (keyed) — workspace panel (home / environment check) with the same key
 
 ## Build and package
 

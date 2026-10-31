@@ -9,8 +9,9 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"]
 }

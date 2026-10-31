@@ -6,14 +6,16 @@
  * - `sidebar.panellist`（list）：左侧边栏的「数据科学示例」入口，和插件
  *   自带的「插件」入口位于同一列。点击后 shell 会调用
  *   `layout.selectPanel('datascience-demo')`。
- * - `main`（keyed）：右侧（中央列）的空白面板。当 `activePanelId` 等于
- *   `datascience-demo` 时 shell 渲染它；点击任意会话行则自动回到会话。
+ * - `main`（keyed）：右侧工作区。当 `activePanelId` 等于
+ *   `datascience-demo` 时 shell 渲染 {@link App}；点击任意会话行则自动回到会话。
  *
  * 失败策略：挂载异常只记录日志，绝不抛出。client 插件抛出会拖垮整个 web
  * 启动，外部插件不能有这种能力。
  */
 
 import * as React from 'react'
+import { App } from './App.tsx'
+import { APP_CSS } from './styles.ts'
 
 /** 面板 id，同时是 `main` 槽位的 key 与侧边栏条目的 id。 */
 const PANEL_ID = 'datascience-demo'
@@ -50,8 +52,11 @@ const ICON = (size: number): string =>
   '<path d="M11.2 11.5V7"/>' +
   '</svg>'
 
-/** 挂载侧边栏入口与空白面板。 */
+/** 挂载侧边栏入口与工作区面板。 */
 export function apply(ctx: ClientContext): void {
+  // ---- 样式 --------------------------------------------------------------
+  ctx.effect(() => installStyles(APP_CSS, 'dsh-datascience-demo'), 'dsh-datascience-demo: styles')
+
   // ---- 侧边栏入口 --------------------------------------------------------
   ctx.effect(() => {
     try {
@@ -76,17 +81,21 @@ export function apply(ctx: ClientContext): void {
     }
   }, 'dsh-datascience-demo: sidebar entry')
 
-  // ---- 右侧空白面板 ------------------------------------------------------
+  // ---- 右侧工作区面板 ----------------------------------------------------
   ctx.effect(() => {
     try {
       return ctx.slots.inject('main', () =>
         ctx.slots.register(
           { name: 'main', key: PANEL_ID },
           () =>
-            React.createElement('div', {
-              className: 'dsd-root',
-              style: { flex: '1 1 auto', width: '100%', height: '100%', minHeight: 0 },
-            }),
+            React.createElement(
+              'div',
+              {
+                className: 'dsd-root',
+                style: { flex: '1 1 auto', width: '100%', height: '100%', minHeight: 0 },
+              },
+              React.createElement(App),
+            ),
         ),
       )
     } catch (failure) {
@@ -94,4 +103,24 @@ export function apply(ctx: ClientContext): void {
       return () => {}
     }
   }, 'dsh-datascience-demo: panel')
+}
+
+/**
+ * 把样式表插入 document.head 并返回移除函数。
+ *
+ * 已安装插件拿不到 `styles` 内置服务，所有已发布 UI 插件都用这种方式注入
+ * 自己的 CSS；`data-plugin-css` 是 harness 约定的标记，便于 HMR 与去重。
+ */
+function installStyles(css: string, pluginId: string): () => void {
+  if (typeof document === 'undefined') return () => {}
+  const existing = document.querySelector(`style[data-plugin-css=${JSON.stringify(pluginId)}]`)
+  if (existing !== null) return () => {}
+  const tag = document.createElement('style')
+  tag.dataset['plugin'] = pluginId
+  tag.dataset['pluginCss'] = pluginId
+  tag.textContent = css
+  document.head.appendChild(tag)
+  return () => {
+    tag.remove()
+  }
 }

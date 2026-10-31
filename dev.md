@@ -123,7 +123,7 @@ Copy-Item "$env:USERPROFILE\.dsh\profiles\desktop\package.json" `
 ### 4.3 重启 desktop
 
 完全退出 DeepSeek Harness 后重新启动。启动后左侧边栏出现
-「数据科学示例」菜单，点击即可打开空白面板。
+「数据科学示例」菜单，点击即可打开数据科学示例面板。
 
 ## 5. 日常开发：编译后如何生效
 
@@ -136,6 +136,7 @@ Copy-Item "$env:USERPROFILE\.dsh\profiles\desktop\package.json" `
 | `src/index.ts`（宿主端） | `npm run build` → 必须重启 DeepSeek Harness |
 | `package.json` 的 `dsh` 字段、`cordis.patch.yml` | 重启 DeepSeek Harness |
 | `npm install` 新增依赖、改构建脚本 | `npm run build` → 重启 DeepSeek Harness |
+| `requirements.txt`（Python 依赖清单） | 不需要构建；刷新页面后重新检查即可读取新清单 |
 
 ### 一键构建 + 重启 desktop
 

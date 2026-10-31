@@ -2,14 +2,18 @@
 
 DSH（DeepSeek Harness）的「数据科学示例」插件（英文名 `datascience-demo`，包名 `dsh-datascience-demo`）。
 
-安装后，左侧边栏「插件」区域会出现「数据科学示例」菜单；点击它，右侧中央区域会打开一个空白面板。
+安装后，左侧边栏「插件」区域会出现「数据科学示例」菜单；点击它，右侧工作区会打开「数据科学示例」面板：首页是插件介绍，子菜单「环境检查」探测本机 Python 3.12、环境管理器与依赖，并支持一键安装。
 
 ## 工程结构
 
 ```text
 src/
-  index.ts         宿主端入口（cordis 插件行，目前无宿主能力）
-  client/index.ts  浏览器端入口：侧边栏入口 + 空白主面板
+  index.ts         宿主端入口：注册环境检查与安装接口
+  routes.ts        /api/dsh-datascience 路由
+  env/             环境探测（probe.ts）与自动安装（install.ts）
+  client/index.ts  浏览器端入口：侧边栏入口 + 工作区面板
+  client/App.tsx   首页 / 环境检查界面
+requirements.txt   Python 依赖清单（新增依赖追加到这里）
 scripts/build.ts   构建脚本（esbuild）
 cordis.patch.yml   bundle patch：把插件行插入 profile 的插件清单
 lib/               构建产物（index.js 宿主端 / client.js 浏览器端）
@@ -20,7 +24,7 @@ lib/               构建产物（index.js 宿主端 / client.js 浏览器端）
 | 槽位 | 用途 |
 | --- | --- |
 | `sidebar.panellist` | 左侧边栏的「数据科学示例」入口，id 为 `datascience-demo` |
-| `main`（keyed） | 右侧空白面板，key 同为 `datascience-demo` |
+| `main`（keyed） | 右侧工作区（首页 / 环境检查），key 同为 `datascience-demo` |
 
 侧边栏条目的 id 与 `main` 槽位的 key 相同，shell 点击条目时会调用
 `layout.selectPanel('datascience-demo')`；点击任意会话行则自动回到会话。
@@ -114,7 +118,7 @@ Copy-Item "$env:USERPROFILE\.dsh\profiles\desktop\package.json" `
 
 完全退出 DeepSeek Harness（包括托盘进程），再重新启动。插件在启动时随
 profile 加载，重启后左侧边栏「插件」区域会出现「数据科学示例」菜单，
-点击即可在右侧打开空白面板。
+点击即可在右侧打开「数据科学示例」面板。
 
 ### 安装检查
 
