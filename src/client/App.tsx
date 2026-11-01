@@ -1277,6 +1277,209 @@ const DATASET_TERMS: { term: string; definition: string; sql: string }[] = [
   { term: 'RFM', definition: '最近消费 / 频率 / 金额三维分群', sql: '基于 orders 按客户聚合' },
 ]
 
+/** 本体类节点：概念（owl:Class）到物理表的映射，坐标为手工排布。 */
+interface OntologyNode {
+  /** 本体中的概念标识，例如 `Customer`。 */
+  id: string
+  /** 中文名称。 */
+  label: string
+  /** 对应的物理表；枚举值类填「枚举值」。 */
+  table: string
+  domain: GraphNode['domain']
+  x: number
+  y: number
+  w: number
+  h: number
+  /** 主干类（订单）在图中加粗显示。 */
+  core?: boolean
+}
+
+/** 本体图中的十个类：八个实体类 + 一个枚举值类 + 一个事件类。 */
+const ONTOLOGY_NODES: OntologyNode[] = [
+  { id: 'UserEvent', label: '行为事件', table: 'user_events', domain: 'content', x: 40, y: 56, w: 170, h: 46 },
+  { id: 'Customer', label: '客户', table: 'customers', domain: 'user', x: 40, y: 146, w: 170, h: 46 },
+  { id: 'MemberLevel', label: '会员等级', table: '枚举值', domain: 'user', x: 40, y: 236, w: 170, h: 40 },
+  { id: 'Order', label: '订单', table: 'orders', domain: 'trade', x: 330, y: 136, w: 200, h: 64, core: true },
+  { id: 'OrderItem', label: '订单明细', table: 'order_items', domain: 'trade', x: 330, y: 262, w: 200, h: 52 },
+  { id: 'Coupon', label: '优惠券', table: 'coupons', domain: 'marketing', x: 680, y: 40, w: 200, h: 44 },
+  { id: 'Payment', label: '支付单', table: 'payments', domain: 'trade', x: 680, y: 110, w: 200, h: 44 },
+  { id: 'Category', label: '类目', table: 'categories', domain: 'product', x: 680, y: 186, w: 200, h: 44 },
+  { id: 'Product', label: '商品', table: 'products', domain: 'product', x: 680, y: 262, w: 200, h: 44 },
+  { id: 'Review', label: '评价', table: 'reviews', domain: 'content', x: 680, y: 344, w: 200, h: 48 },
+]
+
+/** 本体图的一条对象属性边。 */
+interface OntologyEdge {
+  d: string
+  label: string
+  labelX: number
+  labelY: number
+}
+
+/** 主干对象属性：箭头从定义域指向值域，其余属性列在下方关系表中。 */
+const ONTOLOGY_EDGES: OntologyEdge[] = [
+  { d: 'M210,146 L210,102', label: 'generatesEvent', labelX: 219, labelY: 128 },
+  { d: 'M210,169 L330,168', label: 'placesOrder', labelX: 252, labelY: 160 },
+  { d: 'M210,192 L210,236', label: 'hasLevel', labelX: 219, labelY: 218 },
+  { d: 'M430,200 L430,262', label: 'hasItem', labelX: 439, labelY: 235 },
+  { d: 'M530,288 L680,284', label: 'refersToProduct', labelX: 588, labelY: 276 },
+  { d: 'M780,262 L780,230', label: 'belongsToCategory', labelX: 789, labelY: 251 },
+  { d: 'M430,136 L430,100 L700,100 L700,84', label: 'appliesCoupon', labelX: 560, labelY: 93 },
+  { d: 'M530,150 L680,132', label: 'settledBy', labelX: 604, labelY: 130 },
+  { d: 'M530,196 L680,356', label: 'reviewedBy', labelX: 596, labelY: 246 },
+]
+
+/** 本体类定义：概念 → 物理表、属性分类与公理约束。 */
+const ONTOLOGY_CLASS_ROWS: {
+  id: string
+  label: string
+  table: string
+  keys: string
+  facts: string
+  axiom: string
+}[] = [
+  {
+    id: 'Customer', label: '客户', table: 'customers',
+    keys: 'customer_id · customer_name · gender · age · province · city',
+    facts: 'member_level · register_date',
+    axiom: '主键 customer_id；activity_score 为生成参数，不进入语义层',
+  },
+  {
+    id: 'MemberLevel', label: '会员等级', table: '枚举值',
+    keys: 'member_level',
+    facts: '—',
+    axiom: '值域：普通 / 白银 / 黄金 / 钻石；由客户等级属性提升为独立类',
+  },
+  {
+    id: 'Category', label: '类目', table: 'categories',
+    keys: 'category_id · category_name · level',
+    facts: 'parent_id',
+    axiom: 'level=1 时 parent_id 为空；父子关系自反且传递',
+  },
+  {
+    id: 'Product', label: '商品', table: 'products',
+    keys: 'product_id · product_name · brand · category_id',
+    facts: 'list_price · cost · stock · status · created_date',
+    axiom: 'status ∈ 在售 / 下架；popularity、quality_score 为生成参数',
+  },
+  {
+    id: 'Order', label: '订单', table: 'orders',
+    keys: 'order_id · customer_id · coupon_id · channel',
+    facts: 'order_status · total_amount · discount_amount · freight_amount · created_at / paid_at / shipped_at / delivered_at',
+    axiom: 'total_amount = Σ OrderItem.subtotal − discount_amount + freight_amount',
+  },
+  {
+    id: 'OrderItem', label: '订单明细', table: 'order_items',
+    keys: 'item_id · order_id · product_id',
+    facts: 'quantity · unit_price · item_discount · subtotal',
+    axiom: 'subtotal = unit_price × quantity − item_discount；订单与商品的多对多连接类',
+  },
+  {
+    id: 'Payment', label: '支付单', table: 'payments',
+    keys: 'payment_id · order_id · payment_method',
+    facts: 'payment_amount · payment_status · paid_at',
+    axiom: 'payment_status ∈ 成功 / 失败 / 已退款；仅在支付后存在',
+  },
+  {
+    id: 'Coupon', label: '优惠券', table: 'coupons',
+    keys: 'coupon_id · coupon_name · coupon_type',
+    facts: 'threshold_amount · discount_value · valid_from · valid_to',
+    axiom: 'coupon_type ∈ 满减 / 折扣 / 无门槛；有效区间为半开区间',
+  },
+  {
+    id: 'Review', label: '评价', table: 'reviews',
+    keys: 'review_id · order_id · product_id · customer_id',
+    facts: 'rating · review_content · created_at',
+    axiom: 'rating ∈ 1..5；每单最多一条，且必须挂在已签收订单下',
+  },
+  {
+    id: 'UserEvent', label: '行为事件', table: 'user_events',
+    keys: 'event_id · customer_id · product_id',
+    facts: 'event_type · event_time',
+    axiom: 'event_type ∈ view / cart；购买事件由 Order 类承载，不在此重复',
+  },
+]
+
+/** 本体对象属性：定义域 → 值域，以及落地到物理外键的方式。 */
+const ONTOLOGY_PROPERTIES: {
+  name: string
+  domain: string
+  range: string
+  cardinality: string
+  physical: string
+}[] = [
+  { name: 'placesOrder 下单', domain: 'Customer', range: 'Order', cardinality: '1 : N', physical: 'orders.customer_id' },
+  { name: 'hasItem 包含', domain: 'Order', range: 'OrderItem', cardinality: '1 : 1..N', physical: 'order_items.order_id' },
+  { name: 'refersToProduct 指向', domain: 'OrderItem', range: 'Product', cardinality: 'N : 1', physical: 'order_items.product_id' },
+  { name: 'belongsToCategory 归属', domain: 'Product', range: 'Category', cardinality: 'N : 1', physical: 'products.category_id' },
+  { name: 'hasChildCategory 子类目', domain: 'Category', range: 'Category', cardinality: '1 : N', physical: 'categories.parent_id 自关联' },
+  { name: 'appliesCoupon 使用', domain: 'Order', range: 'Coupon', cardinality: 'N : 0..1', physical: 'orders.coupon_id 可为空' },
+  { name: 'settledBy 支付', domain: 'Order', range: 'Payment', cardinality: '1 : 0..1', physical: 'payments.order_id' },
+  { name: 'reviewedBy 评价', domain: 'Order', range: 'Review', cardinality: '1 : 0..1', physical: 'reviews.order_id' },
+  { name: 'aboutProduct 评价对象', domain: 'Review', range: 'Product', cardinality: 'N : 1', physical: 'reviews.product_id' },
+  { name: 'generatesEvent 产生', domain: 'Customer', range: 'UserEvent', cardinality: '1 : N', physical: 'user_events.customer_id' },
+  { name: 'hasLevel 等级', domain: 'Customer', range: 'MemberLevel', cardinality: '1 : 1', physical: 'customers.member_level 枚举' },
+]
+
+/** 本体度量：业务术语在语义层中的等价表达，区别于上方术语表的 SQL 示意。 */
+const ONTOLOGY_MEASURES: { term: string; expression: string; classes: string }[] = [
+  { term: 'GMV', expression: 'Σ Order.total_amount | order_status ∈ {已完成, 已发货}', classes: 'Order' },
+  { term: '客单价', expression: 'GMV ÷ count(Order)', classes: 'Order' },
+  { term: '件单价', expression: 'Σ OrderItem.subtotal ÷ Σ OrderItem.quantity', classes: 'OrderItem' },
+  { term: '连带率', expression: 'Σ OrderItem.quantity ÷ count(distinct Order)', classes: 'OrderItem · Order' },
+  { term: '复购率', expression: 'count(Customer | placesOrder ≥ 2) ÷ count(Customer | placesOrder ≥ 1)', classes: 'Customer · Order' },
+  { term: '退款率', expression: 'count(Payment | payment_status = 已退款) ÷ count(Payment)', classes: 'Payment' },
+  { term: '转化率', expression: 'count(UserEvent[cart]) ÷ count(UserEvent[view])；下单率接 Order', classes: 'UserEvent · Order' },
+  { term: '动销率', expression: 'count(distinct Product | ← OrderItem) ÷ count(Product | status = 在售)', classes: 'Product · OrderItem' },
+  { term: '毛利率', expression: '(Σ OrderItem.subtotal − Σ Product.cost × quantity) ÷ Σ OrderItem.subtotal', classes: 'OrderItem · Product' },
+  { term: 'RFM', expression: 'Customer → {R: now − max(Order.created_at), F: count(Order), M: GMV}', classes: 'Customer · Order' },
+]
+
+/** 本体类图：概念层与对象属性，是表关系 / 知识图谱之上的语义抽象。 */
+function OntologyGraph(): ReactElement {
+  return (
+    <div className="dsd-graph-scroll">
+      <svg className="dsd-graph" viewBox="0 0 940 404" role="img" aria-label="电商数据集本体类图">
+        <defs>
+          <marker id="dsd-onto-arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M1,1 L7,4 L1,7" fill="none" stroke="#8ba3c0" strokeWidth="1.2" />
+          </marker>
+        </defs>
+
+        {ONTOLOGY_EDGES.map(edge => (
+          <g key={edge.d}>
+            <path d={edge.d} className="dsd-onto-edge" markerEnd="url(#dsd-onto-arrow)" />
+            <text className="dsd-onto-edge-label" x={edge.labelX} y={edge.labelY}>
+              {edge.label}
+            </text>
+          </g>
+        ))}
+
+        {ONTOLOGY_NODES.map(node => (
+          <g key={node.id}>
+            <rect
+              x={node.x}
+              y={node.y}
+              width={node.w}
+              height={node.h}
+              rx="8"
+              className={`dsd-onto-node${node.core === true ? ' is-core' : ''}`}
+              style={{ stroke: DOMAIN_COLORS[node.domain] }}
+            />
+            <text className="dsd-onto-name" x={node.x + 12} y={node.y + 22}>
+              {node.id}
+            </text>
+            <text className="dsd-onto-sub" x={node.x + 12} y={node.y + 38}>
+              {node.label} · {node.table}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
 /** 示例数据概览页：整体介绍电商数据集（内容基于 src/data/ecommerce/README.md）。 */
 function DatasetOverviewPage({
   dataset,
@@ -1434,6 +1637,109 @@ function DatasetOverviewPage({
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="dsd-card dsd-env-section">
+          <SectionHead
+            index="06"
+            title="本体图谱"
+            subtitle="在表关系与知识图谱之上再抽象一层：类、对象属性与度量，构成这套数据的语义层"
+            status={<Flag ok>{`${ONTOLOGY_NODES.length} 类 · ${ONTOLOGY_PROPERTIES.length} 个属性`}</Flag>}
+          />
+          <div className="dsd-onto-legend">
+            <span className="dsd-onto-legend-title">业务域</span>
+            {(Object.keys(DOMAIN_LABELS) as GraphNode['domain'][]).map(domain => (
+              <span className="dsd-onto-legend-item" key={domain}>
+                <span className="dsd-onto-dot" style={{ background: DOMAIN_COLORS[domain] }} />
+                {DOMAIN_LABELS[domain]}
+              </span>
+            ))}
+            <span className="dsd-onto-legend-note">箭头表示对象属性：定义域 → 值域</span>
+          </div>
+          <OntologyGraph />
+
+          <div className="dsd-onto-caption">本体类（owl:Class）与物理表映射</div>
+          <div className="dsd-grid-scroll">
+            <table className="dsd-grid">
+              <thead>
+                <tr>
+                  <th>类</th>
+                  <th>物理表</th>
+                  <th>标识与维度属性</th>
+                  <th>度量 / 时间属性</th>
+                  <th>公理与约束</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ONTOLOGY_CLASS_ROWS.map(row => (
+                  <tr key={row.id}>
+                    <td className="dsd-mono">
+                      {row.id}
+                      <span className="dsd-onto-label">{row.label}</span>
+                    </td>
+                    <td className="dsd-mono">{row.table}</td>
+                    <td className="is-text" title={row.keys}>{row.keys}</td>
+                    <td className="is-text" title={row.facts}>{row.facts}</td>
+                    <td className="is-text" title={row.axiom}>{row.axiom}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="dsd-onto-caption">对象属性（owl:ObjectProperty）</div>
+          <div className="dsd-grid-scroll dsd-triple-scroll">
+            <table className="dsd-grid">
+              <thead>
+                <tr>
+                  <th>属性</th>
+                  <th>定义域</th>
+                  <th>值域</th>
+                  <th>基数</th>
+                  <th>物理实现</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ONTOLOGY_PROPERTIES.map(item => (
+                  <tr key={item.name}>
+                    <td className="dsd-triple-relation">{item.name}</td>
+                    <td className="dsd-mono">{item.domain}</td>
+                    <td className="dsd-mono">{item.range}</td>
+                    <td className="dsd-mono">{item.cardinality}</td>
+                    <td className="is-text">{item.physical}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="dsd-onto-caption">度量与术语的本体表达</div>
+          <div className="dsd-grid-scroll dsd-triple-scroll">
+            <table className="dsd-grid">
+              <thead>
+                <tr>
+                  <th>术语</th>
+                  <th>本体表达式</th>
+                  <th>依赖类</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ONTOLOGY_MEASURES.map(item => (
+                  <tr key={item.term}>
+                    <td>{item.term}</td>
+                    <td className="dsd-mono">{item.expression}</td>
+                    <td className="dsd-mono">{item.classes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="dsd-link-note">
+            语义层的用法：先按类定位实体（如 Order 承载金额与状态），再沿对象属性连接
+            （placesOrder / hasItem / refersToProduct），最后用度量表达式聚合，避免把物理表名与字段直接写进口径；
+            生成参数类字段（activity_score、popularity、quality_score）已从本体重排除。
           </div>
         </section>
 

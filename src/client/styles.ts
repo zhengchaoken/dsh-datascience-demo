@@ -994,6 +994,48 @@ export const APP_CSS = `
 }
 .dsd-graph-domain { font-size: 9px; }
 
+/* 本体图谱：类图 + 语义层表格 */
+.dsd-onto-edge { fill: none; stroke: #9fb4d0; stroke-width: 1.2; }
+.dsd-onto-edge-label {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 9px;
+  fill: var(--dsd-muted);
+}
+.dsd-onto-node { fill: #fbfdff; stroke-width: 1.3; }
+.dsd-onto-node.is-core { fill: #eff6ff; stroke-width: 1.8; }
+.dsd-onto-name {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--dsd-ink);
+}
+.dsd-onto-sub { font-size: 9.5px; fill: var(--dsd-muted); }
+.dsd-onto-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--dsd-muted);
+}
+.dsd-onto-legend-title { font-weight: 600; color: var(--dsd-ink); }
+.dsd-onto-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.dsd-onto-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.dsd-onto-legend-note { margin-left: auto; }
+.dsd-onto-caption {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3a4f;
+}
+.dsd-onto-label {
+  margin-left: 6px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--dsd-muted);
+}
+
 /* 知识图谱：域卡片 + 三元组表 */
 .dsd-domain-grid {
   display: grid;
