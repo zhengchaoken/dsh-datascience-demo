@@ -111,6 +111,14 @@ npm run web
 
 浏览器打开 `http://127.0.0.1:5180`。首次进入「环境检查」创建 `.venv` 并安装依赖，与 DSH 面板流程一致。
 
+需要让局域网或服务器外的节点访问时用：
+
+```powershell
+npm run dev
+```
+
+该脚本等价于 `npm run build:web` 加 `node dist-web/server.mjs --host 0.0.0.0`，启动日志会直接打印可用的外部访问地址。
+
 ### 4.2 参数与环境变量
 
 | 配置 | 命令行 | 环境变量 | 默认值 |
@@ -121,7 +129,36 @@ npm run web
 
 `--workspace` 会切换进程工作目录，`.venv`、Python 脚本的运行位置、`requirements.txt` 的读取基准都随之生效。
 
-### 4.3 部署目录
+### 4.3 让外部节点访问
+
+默认监听 `127.0.0.1`，只绑定回环网卡，因此本机之外的节点连不上。分三步放开：
+
+1. 监听所有网卡
+
+```powershell
+npm run dev
+# 等价于
+node dist-web/server.mjs --host 0.0.0.0
+```
+
+也可以用环境变量：`$env:DSD_WEB_HOST = '0.0.0.0'; node dist-web/server.mjs`。启动日志会打印 `外部访问：http://<本机IP>:5180`。
+
+2. 放行防火墙（Windows 管理员 PowerShell）
+
+```powershell
+New-NetFirewallRule -DisplayName "数据科学 Web 5180" -Direction Inbound `
+  -Protocol TCP -LocalPort 5180 -Action Allow
+```
+
+Linux 用 `sudo ufw allow 5180/tcp`；云服务器还要在安全组放行 5180。
+
+3. 外部节点访问 `http://<服务器IP>:5180`
+
+页面与接口同源，`api.ts` 的相对前缀不需要改。若通过反向代理对外提供服务，让 Node 保持默认 `127.0.0.1`，只暴露代理端口更稳妥。
+
+注意：`0.0.0.0` 会对同网段所有设备开放，而面板能执行安装任务与只读 SQL 查询，请只在可信网络中这样启动，或在前置代理加鉴权。
+
+### 4.4 部署目录
 
 Web 服务不是纯静态站点：它要读 SQLite、要调 Python，必须有 Node 进程。最小部署目录：
 
@@ -137,7 +174,7 @@ Web 服务不是纯静态站点：它要读 SQLite、要调 Python，必须有 N
 
 复制时保留 `dist-web/` 与 `src/data/` 的相对位置即可。
 
-### 4.4 常驻与反向代理
+### 4.5 常驻与反向代理
 
 - Windows 常驻：`nssm install dsh-web "node" "dist-web/server.mjs --port 5180"`，工作目录设为部署目录
 - Linux 常驻：systemd 或 pm2 `pm2 start dist-web/server.mjs --name dsh-web`

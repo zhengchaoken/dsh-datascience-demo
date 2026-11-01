@@ -9,6 +9,7 @@
 
 import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
+import { networkInterfaces } from 'node:os'
 import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { InstallController } from '../env/install.ts'
@@ -101,11 +102,34 @@ const server = createServer((req, res) => {
   })
 })
 
-server.listen(port, host, () => {
-  console.log(`数据科学 Web 面板：http://${host}:${port}`)
+/** 列出本机的非回环 IPv4 地址，用于提示外部可用的访问地址。 */
+function lanAddresses(): string[] {
+  const addresses: string[] = []
+  for (const list of Object.values(networkInterfaces())) {
+    for (const item of list ?? []) {
+      if (item.family === 'IPv4' && !item.internal) addresses.push(item.address)
+    }
+  }
+  return addresses
+}
+
+/** 监听通配地址时，对外提示本机回环与各网卡地址。 */
+function printStartup(): void {
+  const wildcard = host === '0.0.0.0' || host === '::'
+  console.log(`数据科学 Web 面板：http://${wildcard ? '127.0.0.1' : host}:${port}`)
+  if (wildcard) {
+    const addresses = lanAddresses()
+    console.log(
+      addresses.length === 0
+        ? '外部访问：未检测到可用网卡，请确认网络连接'
+        : `外部访问：${addresses.map(address => `http://${address}:${port}`).join('、')}`,
+    )
+  }
   console.log(`工作目录：${process.cwd()}`)
   console.log(`静态资源：${WEB_ROOT}`)
-})
+}
+
+server.listen(port, host, printStartup)
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {

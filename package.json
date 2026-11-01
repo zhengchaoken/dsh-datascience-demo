@@ -49,6 +49,7 @@
     "build": "tsx scripts/build.ts",
     "build:watch": "tsx watch scripts/build.ts",
     "build:web": "tsx scripts/build-web.ts",
+    "dev": "npm run build:web && node dist-web/server.mjs --host 0.0.0.0",
     "web": "npm run build:web && node dist-web/server.mjs",
     "web:serve": "node dist-web/server.mjs",
     "typecheck": "tsc --noEmit",
