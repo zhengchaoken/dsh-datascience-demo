@@ -510,6 +510,47 @@ function Sidebar({
   )
 }
 
+/** 数据科学标准流程的八个环节。 */
+const DS_FLOW: { index: string; name: string; desc: string }[] = [
+  { index: '01', name: '业务理解', desc: '把业务问题转成可分析的数据问题' },
+  { index: '02', name: '数据采集', desc: '数据库、日志、接口与第三方数据' },
+  { index: '03', name: '数据预处理', desc: '清洗、去重、缺失值、特征工程，占 60%~80% 工时' },
+  { index: '04', name: '探索分析', desc: '描述统计、分布、相关性与异常检测' },
+  { index: '05', name: '建模', desc: '统计模型、机器学习、深度学习' },
+  { index: '06', name: '评估调优', desc: '交叉验证、防过拟合、参数寻优' },
+  { index: '07', name: '结果呈现', desc: '可视化图表与分析报告' },
+  { index: '08', name: '部署监控', desc: '上线运行、效果监控与迭代' },
+]
+
+/** 数据科学回答的四类业务问题。 */
+const DS_QUESTIONS: { title: string; body: string }[] = [
+  { title: '描述分析', body: '过去发生了什么：报表、用户画像、营收复盘' },
+  { title: '诊断分析', body: '为什么发生：流失根因、销量下滑归因' },
+  { title: '预测分析', body: '未来会怎样：销量预测、风险预警、客流预估' },
+  { title: '指导决策', body: '应该怎么做：推荐系统、定价优化、智能调度' },
+]
+
+/** CRISP-DM 项目生命周期的七个阶段。 */
+const DS_LIFECYCLE: { name: string; desc: string }[] = [
+  { name: '数据采集与摄取', desc: '从各类来源收集结构化与非结构化原始数据' },
+  { name: '数据存储', desc: '落入数据库或数据仓库，供后续加工与查询' },
+  { name: '清洗与预处理', desc: '处理缺失值、异常值，完成数据转换' },
+  { name: '探索与分析', desc: '用统计方法与可视化理解数据特征' },
+  { name: '建模', desc: '选择算法并训练模型' },
+  { name: '评估与优化', desc: '验证模型效果，调优并复核过拟合' },
+  { name: '部署与应用', desc: '投入生产，输出洞察与预测结果' },
+]
+
+/** 数据科学相关的主要岗位。 */
+const DS_ROLES: { name: string; desc: string }[] = [
+  { name: '数据分析师', desc: 'SQL、EDA、BI 报表，以数据支撑业务决策' },
+  { name: '数据科学家', desc: '数学、算法、大数据与模型部署，负责核心预测、推荐与风控模型' },
+  { name: '机器学习工程师', desc: '模型训练、分布式部署与性能优化' },
+  { name: '大数据开发工程师', desc: '数据仓库、Spark 与数据流水线建设' },
+  { name: 'AI 算法工程师', desc: '深度学习、大模型、计算机视觉与自然语言处理' },
+  { name: '商业分析师', desc: '用数据优化业务流程与商业决策' },
+]
+
 /** 首页：纯静态介绍，不展示任何环境检查结果。 */
 function HomePage(): ReactElement {
   return (
@@ -579,6 +620,65 @@ function HomePage(): ReactElement {
           </p>
         </div>
       </div>
+
+      <section className="dsd-intro">
+        <span className="dsd-eyebrow">ABOUT DATA SCIENCE</span>
+        <h2>数据科学是什么</h2>
+        <p className="dsd-intro-lead">
+          数据科学融合数学统计、计算机编程与业务领域知识，从结构化与非结构化数据中提取价值、
+          挖掘规律、预测趋势，辅助业务决策。它的产出不是结论本身，而是预测模型、分析报告、
+          仪表板与可视化结论。
+        </p>
+        <span className="dsd-intro-note">
+          2022 年列入普通高等学校本科专业目录，属统计学类。
+        </span>
+
+        <div className="dsd-flow">
+          {DS_FLOW.map(step => (
+            <div className="dsd-flow-step" key={step.index}>
+              <span className="dsd-flow-index">{step.index}</span>
+              <div className="dsd-flow-name">{step.name}</div>
+              <div className="dsd-flow-desc">{step.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="dsd-question-grid">
+          {DS_QUESTIONS.map(item => (
+            <div className="dsd-question" key={item.title}>
+              <div className="dsd-question-title">{item.title}</div>
+              <div className="dsd-question-body">{item.body}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="dsd-intro-columns">
+          <div className="dsd-card">
+            <div className="dsd-intro-card-head">项目生命周期 · CRISP-DM</div>
+            <table className="dsd-lifecycle">
+              <tbody>
+                {DS_LIFECYCLE.map(stage => (
+                  <tr key={stage.name}>
+                    <th scope="row">{stage.name}</th>
+                    <td>{stage.desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="dsd-card">
+            <div className="dsd-intro-card-head">常见岗位</div>
+            <dl className="dsd-roles">
+              {DS_ROLES.map(role => (
+                <div className="dsd-role" key={role.name}>
+                  <dt>{role.name}</dt>
+                  <dd>{role.desc}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </section>
     </section>
   )
 }

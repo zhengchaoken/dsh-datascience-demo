@@ -325,6 +325,132 @@ export const APP_CSS = `
   font-size: 12.5px;
 }
 
+/* ---------- home: data science intro ---------- */
+.dsd-intro {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--dsd-line);
+}
+.dsd-intro h2 {
+  margin: 8px 0 10px;
+  font-size: 20px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.dsd-intro-lead {
+  max-width: 780px;
+  margin: 0;
+  color: #495a70;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.dsd-intro-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--dsd-muted);
+  font-size: 11.5px;
+}
+.dsd-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+.dsd-flow-step {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--dsd-line);
+  border-radius: 10px;
+  background: var(--dsd-surface);
+}
+.dsd-flow-index {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--dsd-teal);
+}
+.dsd-flow-name {
+  margin-top: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.dsd-flow-desc {
+  margin-top: 4px;
+  color: var(--dsd-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.dsd-question-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.dsd-question {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #d9e8f7;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef7f6 100%);
+}
+.dsd-question-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #234a7d;
+}
+.dsd-question-body {
+  margin-top: 4px;
+  color: var(--dsd-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.dsd-intro-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.dsd-intro-card-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--dsd-line);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.dsd-lifecycle {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.dsd-lifecycle th {
+  width: 88px;
+  padding: 5px 8px 5px 0;
+  text-align: left;
+  font-weight: 600;
+  color: var(--dsd-ink);
+  vertical-align: top;
+}
+.dsd-lifecycle td {
+  padding: 5px 0;
+  color: var(--dsd-muted);
+  line-height: 1.5;
+}
+.dsd-lifecycle tr + tr th,
+.dsd-lifecycle tr + tr td { border-top: 1px dashed #e8eef7; }
+.dsd-roles { margin: 10px 0 0; }
+.dsd-role { padding: 7px 0; }
+.dsd-role + .dsd-role { border-top: 1px dashed #e8eef7; }
+.dsd-role dt {
+  font-size: 12px;
+  font-weight: 600;
+}
+.dsd-role dd {
+  margin: 3px 0 0;
+  color: var(--dsd-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
 /* ---------- environment page ---------- */
 .dsd-page-head {
   display: flex;
@@ -1088,10 +1214,13 @@ export const APP_CSS = `
 
 @media (max-width: 1100px) {
   .dsd-hero-art { display: none; }
+  .dsd-flow, .dsd-question-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dsd-intro-columns { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
   .dsd-features, .dsd-kv-grid, .dsd-package-list { grid-template-columns: minmax(0, 1fr); }
   .dsd-domain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dsd-flow, .dsd-question-grid { grid-template-columns: minmax(0, 1fr); }
   .dsd-main { padding: 20px 18px 32px; }
 }
 `
