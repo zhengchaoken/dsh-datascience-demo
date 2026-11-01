@@ -47,7 +47,13 @@ export function makeRoutes(deps: RoutesDeps): { routes: WebRoute[] } {
           return
         }
         if (req.method === 'POST') {
-          writeJson(res, 202, install.start())
+          // 请求体可以缺省；只有 indexUrl 是字符串时才作为自定义源传入。
+          const body = await readJsonBody(req).catch(() => null)
+          const indexUrl =
+            typeof body === 'object' && body !== null
+              ? (body as { indexUrl?: unknown }).indexUrl
+              : undefined
+          writeJson(res, 202, install.start(typeof indexUrl === 'string' ? { indexUrl } : {}))
           return
         }
         writeError(res, 405, '只支持 GET 或 POST')

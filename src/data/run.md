@@ -9,8 +9,8 @@
 
 | 项目 | 要求 |
 |---|---|
-| 操作系统 | Windows 10/11（命令以 PowerShell 为例） |
-| Python | 3.12.x |
+| 操作系统 | Windows / Linux / macOS（命令以 PowerShell 为例） |
+| Python | 3.12 及以上（3.12 / 3.13 的预编译包最齐全） |
 | 虚拟环境 | 项目根目录的 `.venv`（与系统 Python 隔离） |
 | 内存 | ≥ 4 GB |
 | GPU | 不需要，TensorFlow 以 CPU 模式运行 |

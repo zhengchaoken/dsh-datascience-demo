@@ -126,22 +126,49 @@ function normalizeName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/gu, '-')
 }
 
-/** 探测 Python 解释器。 */
+/** 可运行示例分析的最低 Python 版本。 */
+export const MINIMUM_PYTHON = '3.12'
+
+/** 把 `3.12.10` 解析为 `[3, 12]`；无法解析时返回 null。 */
+function majorMinor(version: string | null): [number, number] | null {
+  if (version === null) return null
+  const match = version.match(/([0-9]+)\.([0-9]+)/u)
+  return match === null ? null : [Number(match[1]), Number(match[2])]
+}
+
+/** 是否满足最低版本要求：不低于 3.12 即可，更高版本同样可用。 */
+export function isSupportedPython(version: string | null): boolean {
+  const parsed = majorMinor(version)
+  const minimum = majorMinor(MINIMUM_PYTHON)
+  if (parsed === null || minimum === null) return false
+  return parsed[0] > minimum[0] || (parsed[0] === minimum[0] && parsed[1] >= minimum[1])
+}
+
+/** 高版本提示：部分科学计算库尚未发布对应的预编译包。 */
+function versionNote(version: string): string | null {
+  const parsed = majorMinor(version)
+  if (parsed === null) return null
+  if (parsed[0] > 3 || (parsed[0] === 3 && parsed[1] >= 14)) {
+    return '版本高于示例依赖的常用范围；若个别库没有预编译包，可改用 3.12 或 3.13。'
+  }
+  return null
+}
+
+/** 探测 Python 解释器：优先满足最低版本，找不到时返回已发现的解释器信息。 */
 export async function probePython(): Promise<PythonInfo> {
+  const script =
+    'import sys,platform;print("EXE:"+sys.executable);print("VER:"+platform.python_version())'
   const candidates: { file: string; args: string[] }[] = [
-    {
-      file: 'python',
-      args: ['-c', 'import sys,platform;print("EXE:"+sys.executable);print("VER:"+platform.python_version())'],
-    },
-    {
-      file: 'python3',
-      args: ['-c', 'import sys,platform;print("EXE:"+sys.executable);print("VER:"+platform.python_version())'],
-    },
-    {
-      file: 'py',
-      args: ['-3', '-c', 'import sys,platform;print("EXE:"+sys.executable);print("VER:"+platform.python_version())'],
-    },
+    { file: 'python3.13', args: ['-c', script] },
+    { file: 'python3.12', args: ['-c', script] },
+    { file: 'python3', args: ['-c', script] },
+    { file: 'python', args: ['-c', script] },
+    { file: 'py', args: ['-3.13', '-c', script] },
+    { file: 'py', args: ['-3.12', '-c', script] },
+    { file: 'py', args: ['-3', '-c', script] },
   ]
+
+  let fallback: PythonInfo | null = null
 
   for (const candidate of candidates) {
     const result = await capture(candidate.file, candidate.args)
@@ -151,22 +178,28 @@ export async function probePython(): Promise<PythonInfo> {
     if (exe === undefined || exe === '' || version === undefined || version === '') continue
 
     const pip = await capture(exe, ['-m', 'pip', '--version'])
-    const pipVersion = pip.ok ? firstVersion(pip.stdout) : null
-
-    return {
+    const info: PythonInfo = {
       found: true,
       executable: exe,
       version,
-      versionOk: version.startsWith('3.12.'),
-      pipVersion,
+      versionOk: isSupportedPython(version),
+      minimumVersion: MINIMUM_PYTHON,
+      note: versionNote(version),
+      pipVersion: pip.ok ? firstVersion(pip.stdout) : null,
     }
+    if (info.versionOk) return info
+    if (fallback === null) fallback = info
   }
+
+  if (fallback !== null) return fallback
 
   return {
     found: false,
     executable: null,
     version: null,
     versionOk: false,
+    minimumVersion: MINIMUM_PYTHON,
+    note: null,
     pipVersion: null,
   }
 }

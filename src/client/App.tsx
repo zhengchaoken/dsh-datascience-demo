@@ -723,6 +723,8 @@ function EnvironmentPage({
   loading,
   error,
   install,
+  indexUrl,
+  onIndexUrlChange,
   onInstall,
   onRefresh,
 }: {
@@ -730,6 +732,9 @@ function EnvironmentPage({
   loading: boolean
   error: string | null
   install: InstallState | null
+  /** 自定义 PyPI 源；空串表示使用默认国内镜像。 */
+  indexUrl: string
+  onIndexUrlChange: (value: string) => void
   onInstall: () => void
   onRefresh: () => void
 }): ReactElement {
@@ -815,10 +820,10 @@ function EnvironmentPage({
               <SectionHead
                 index="02"
                 title="Python"
-                subtitle="系统解释器"
+                subtitle={`系统解释器（最低要求 ${report.python.minimumVersion}）`}
                 status={
                   report.python.found
-                    ? <Flag ok={report.python.versionOk}>{report.python.versionOk ? '可用' : '版本不符'}</Flag>
+                    ? <Flag ok={report.python.versionOk}>{report.python.versionOk ? '可用' : '版本过低'}</Flag>
                     : <Flag ok={false}>未找到</Flag>
                 }
               />
@@ -831,18 +836,29 @@ function EnvironmentPage({
                   <span className="dsd-kv-key">pip</span>
                   <span className="dsd-kv-value dsd-mono">{report.python.pipVersion ?? '未检测到'}</span>
                 </div>
+                <div className="dsd-kv-row">
+                  <span className="dsd-kv-key">最低要求</span>
+                  <span className="dsd-kv-value dsd-mono">{report.python.minimumVersion} 及以上</span>
+                </div>
+                <div className="dsd-kv-row">
+                  <span className="dsd-kv-key">架构</span>
+                  <span className="dsd-kv-value dsd-mono">{report.system.arch}</span>
+                </div>
                 <div className="dsd-kv-row dsd-kv-wide">
                   <span className="dsd-kv-key">路径</span>
                   <span className="dsd-kv-value dsd-mono">{report.python.executable ?? '—'}</span>
                 </div>
               </div>
+              {report.python.note !== null ? (
+                <div className="dsd-link-note">提示：{report.python.note}</div>
+              ) : null}
               {pythonReady ? null : (
                 <div className="dsd-action-row">
                   <button className="dsd-button is-primary" onClick={onInstall} disabled={installing || loading}>
-                    {installing ? '正在安装…' : '安装 Python 3.12'}
+                    {installing ? '正在安装…' : '一键安装环境'}
                   </button>
                   <span className="dsd-action-hint">
-                    安装后会继续创建 .venv 并安装依赖清单。
+                    自动查找或安装 Python {report.python.minimumVersion}+，再创建 .venv 并安装依赖。
                   </span>
                 </div>
               )}
@@ -884,7 +900,7 @@ function EnvironmentPage({
                   <span className="dsd-kv-key">conda/mamba</span>
                   <span className="dsd-kv-value">
                     {report.managers.length === 0
-                      ? '未检测到（安装 Python 时回退到官方安装包）'
+                      ? '未检测到（自动安装时回退到系统包管理器或官方安装包）'
                       : report.managers.map(manager => `${manager.name} ${manager.version}`).join(' · ')}
                   </span>
                 </div>
@@ -895,7 +911,7 @@ function EnvironmentPage({
                     {installing ? '正在安装…' : '创建 .venv 并安装依赖'}
                   </button>
                   <span className="dsd-action-hint">
-                    使用 python -m venv .venv，随后升级 pip 并按清华源安装依赖。
+                    使用 python -m venv .venv，随后升级 pip 并按所选源安装依赖。
                   </span>
                 </div>
               ) : null}
@@ -943,7 +959,7 @@ function EnvironmentPage({
                     {installing ? '正在安装…' : '安装缺失依赖'}
                   </button>
                   <span className="dsd-action-hint">
-                    使用清华源安装，已安装的包会跳过。
+                    按所选源安装，已安装的包会跳过。
                   </span>
                 </div>
               ) : null}
@@ -989,13 +1005,34 @@ function EnvironmentPage({
                 {statusText}
               </span>
             </div>
+            <div className="dsd-index-row">
+              <span className="dsd-index-label">PyPI 源</span>
+              <input
+                className="dsd-input"
+                value={indexUrl}
+                placeholder={report.install.indexUrl}
+                onChange={event => onIndexUrlChange(event.target.value)}
+                disabled={installing}
+                spellCheck={false}
+                aria-label="PyPI 源地址"
+              />
+              {indexUrl.trim() === '' ? null : (
+                <button
+                  className="dsd-button"
+                  onClick={() => onIndexUrlChange('')}
+                  disabled={installing}
+                >
+                  恢复默认
+                </button>
+              )}
+            </div>
             <pre className={`dsd-log${logs.length === 0 ? ' is-empty' : ''}`} ref={logRef}>
               {logs.length === 0 ? '尚未开始安装。点击上方按钮后，这里会实时显示安装过程。' : logs.join('\n')}
             </pre>
             <div className="dsd-log-hint">
               {installing
                 ? '安装进行中，日志会自动刷新；完成后环境信息会自动重新检测。'
-                : '安装流程：确认 Python 3.12 → python -m venv .venv → 升级 pip/setuptools/wheel → 按清华源安装依赖。'}
+                : `安装流程：确认 Python ${report.python.minimumVersion}+（缺失时尝试 conda 或系统包管理器）→ python -m venv .venv → 升级 pip/setuptools/wheel → 按所选源安装依赖。源留空时使用默认国内镜像，可随时在左侧输入框修改。`}
             </div>
           </div>
         </>
@@ -1648,6 +1685,8 @@ export function App(): ReactElement {
   const [datasetError, setDatasetError] = useState<string | null>(null)
   const [report, setReport] = useState<EnvironmentReport | null>(null)
   const [install, setInstall] = useState<InstallState | null>(null)
+  /** 自定义 PyPI 源；空串表示沿用后端默认的国内镜像。 */
+  const [indexUrl, setIndexUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   /** 最近一次写入地址栏的 hash，用于忽略自己触发的 hashchange。 */
@@ -1704,12 +1743,12 @@ export function App(): ReactElement {
   const handleInstall = useCallback(async (): Promise<void> => {
     setError(null)
     try {
-      const started = await startInstall()
+      const started = await startInstall(indexUrl)
       setInstall(started)
     } catch (failure) {
       setError(failureMessage(failure))
     }
-  }, [])
+  }, [indexUrl])
 
   /** 加载示例数据集元信息（九张表的行数与字段说明）。 */
   const loadDataset = useCallback(async (): Promise<void> => {
@@ -1868,6 +1907,8 @@ export function App(): ReactElement {
               loading={loading}
               error={error}
               install={install}
+              indexUrl={indexUrl}
+              onIndexUrlChange={setIndexUrl}
               onInstall={() => void handleInstall()}
               onRefresh={() => void refresh()}
             />

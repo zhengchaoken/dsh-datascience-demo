@@ -5,8 +5,10 @@ A **Data Science Demo** plugin for DeepSeek Harness (DSH). Package name
 
 Once installed, a **数据科学示例** entry appears in the sidebar's plugins area.
 Clicking it opens the Data Science Demo workspace: a home introduction plus an
-Environment Check page that probes Python 3.12, conda/mamba, and the dependency
-list, with one-click installation.
+Environment Check page that probes Python (3.12 or newer), conda/mamba, and the
+dependency list. Once Node is ready, one click installs Python, `.venv`, and the
+dependencies; the PyPI index defaults to a China mirror and can be edited in the
+UI.
 
 ## Layout
 

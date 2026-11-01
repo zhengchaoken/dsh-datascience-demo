@@ -58,11 +58,13 @@ export async function fetchInstallState(): Promise<InstallState> {
   return readJson<InstallState>(response)
 }
 
-/** 启动安装任务。 */
-export async function startInstall(): Promise<InstallState> {
+/** 启动安装任务；`indexUrl` 留空表示使用默认国内镜像。 */
+export async function startInstall(indexUrl?: string): Promise<InstallState> {
+  const url = (indexUrl ?? '').trim()
   const response = await fetch(`${BASE}/install`, {
     method: 'POST',
-    headers: { accept: 'application/json' },
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(url === '' ? {} : { indexUrl: url }),
   })
   return readJson<InstallState>(response)
 }

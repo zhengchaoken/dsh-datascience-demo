@@ -23,8 +23,12 @@ export interface PythonInfo {
   executable: string | null
   /** 例如 `3.12.10`。 */
   version: string | null
-  /** 是否为 3.12.x。 */
+  /** 是否满足最低版本要求（3.12），更高版本同样可用。 */
   versionOk: boolean
+  /** 可用的最低版本，例如 `3.12`。 */
+  minimumVersion: string
+  /** 版本相关提示，例如高版本可能缺少预编译包。 */
+  note: string | null
   /** pip 版本，例如 `24.0`。 */
   pipVersion: string | null
 }
@@ -75,6 +79,12 @@ export interface InstalledPackage {
 /** 安装任务的公开状态。 */
 export type InstallStatus = 'idle' | 'running' | 'succeeded' | 'failed'
 
+/** 发起安装时可选参数。 */
+export interface InstallRequest {
+  /** 自定义 PyPI 源地址；留空使用默认国内镜像。 */
+  indexUrl?: string
+}
+
 /** 安装任务快照。 */
 export interface InstallState {
   status: InstallStatus
@@ -84,6 +94,8 @@ export interface InstallState {
   finishedAt: string | null
   /** 失败原因，仅 failed 时有值。 */
   error: string | null
+  /** 本次使用的 PyPI 源。 */
+  indexUrl: string
   /** 过程日志，按时间顺序。 */
   logs: string[]
 }
@@ -166,7 +178,7 @@ export interface EnvironmentReport {
   dependencies: DependencyInfo[]
   /** `.venv` 中的完整 pip 包列表。 */
   installedPackages: InstalledPackage[]
-  /** Python 3.12 可用、`.venv` 已创建且依赖齐全。 */
+  /** Python 满足最低版本（3.12 及以上）、`.venv` 已创建且依赖齐全。 */
   ready: boolean
   /** 读取依赖清单或 pip 列表时的错误。 */
   dependenciesError: string | null

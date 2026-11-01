@@ -675,6 +675,35 @@ export const APP_CSS = `
   background: #fbfdff;
 }
 .dsd-install-title { font-weight: 600; font-size: 12.5px; }
+.dsd-index-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--dsd-line);
+}
+.dsd-index-label {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--dsd-muted);
+}
+.dsd-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dsd-line);
+  background: var(--dsd-surface);
+  color: var(--dsd-ink);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11.5px;
+}
+.dsd-input:focus {
+  outline: none;
+  border-color: var(--dsd-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.dsd-input:disabled { opacity: 0.6; cursor: not-allowed; }
 .dsd-install-state {
   margin-left: auto;
   display: inline-flex;
