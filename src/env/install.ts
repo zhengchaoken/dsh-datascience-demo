@@ -432,21 +432,128 @@ export class InstallController {
     }
 
     this.log('创建虚拟环境：python -m venv .venv')
-    await this.runCommand(systemPython, ['-m', 'venv', venvPath])
-    if (!existsSync(venvPython)) {
-      throw new Error(`venv 创建完成，但没有找到 ${venvPython}`)
+    if (!(await this.createVenv(systemPython, venvPath, venvPython))) {
+      // Debian/Ubuntu 把 ensurepip 拆到 python3.x-venv 包里，先补齐支持再重试一次。
+      this.log('当前 Python 缺少 venv / ensurepip 支持，尝试自动安装对应的系统包…')
+      if (!(await this.installVenvSupport(systemPython))) throw new Error(this.venvSupportHint(systemPython))
+      rmSync(venvPath, { recursive: true, force: true })
+      this.log('重新创建虚拟环境…')
+      if (!(await this.createVenv(systemPython, venvPath, venvPython))) {
+        throw new Error(this.venvSupportHint(systemPython))
+      }
     }
     if (!(await this.hasPip(venvPython))) {
       this.log('虚拟环境缺少 pip，执行 ensurepip 修复…')
-      if (!(await this.repairPip(venvPython))) {
-        throw new Error(
-          '虚拟环境缺少 pip 支持，请先安装 venv 模块后重试' +
-            '（Debian/Ubuntu: apt install python3-venv；Alpine: apk add py3-pip）。',
-        )
-      }
+      if (!(await this.repairPip(venvPython))) throw new Error(this.venvSupportHint(systemPython))
     }
     this.log(`虚拟环境已创建：${venvPath}`)
     return venvPython
+  }
+
+  /** 执行 `python -m venv`，失败只记日志并返回 false。 */
+  private async createVenv(
+    systemPython: string,
+    venvPath: string,
+    venvPython: string,
+  ): Promise<boolean> {
+    try {
+      await this.runCommand(systemPython, ['-m', 'venv', venvPath])
+    } catch (failure) {
+      this.log(`创建虚拟环境失败：${errorMessage(failure)}`)
+      return false
+    }
+    if (!existsSync(venvPython)) {
+      this.log(`venv 命令已结束，但没有找到 ${venvPython}`)
+      return false
+    }
+    return true
+  }
+
+  /** 按发行版安装 venv / ensurepip 支持包；平台不支持或失败时返回 false。 */
+  private async installVenvSupport(systemPython: string): Promise<boolean> {
+    if (process.platform !== 'linux' || this.isTermux()) return false
+    const elevator = await this.elevator()
+    if (elevator === null) {
+      this.log('当前用户不是 root 且没有免密 sudo，无法自动安装系统包。')
+      return false
+    }
+
+    const version = await this.pythonVersionOf(systemPython)
+    const aptPackages =
+      version === null ? ['python3-venv'] : [`python${version}-venv`, 'python3-venv']
+
+    // Debian / Ubuntu：venv 与 ensurepip 由 python3.x-venv 提供。
+    if ((await capture('apt-get', ['--version'], 8000)).ok) {
+      await this.tryElevated(elevator, 'apt-get', ['update'], { DEBIAN_FRONTEND: 'noninteractive' })
+      for (const name of aptPackages) {
+        this.log(`安装 ${name} …`)
+        await this.tryElevated(
+          elevator,
+          'apt-get',
+          ['install', '-y', '--no-install-recommends', name],
+          { DEBIAN_FRONTEND: 'noninteractive' },
+        )
+        if (await this.venvUsable(systemPython)) return true
+      }
+      return false
+    }
+
+    // Fedora / RHEL：pip 包同时提供 ensurepip 所需的 wheel。
+    for (const manager of ['dnf', 'yum'] as const) {
+      if (!(await capture(manager, ['--version'], 8000)).ok) continue
+      const packages =
+        version === null ? ['python3-pip'] : [`python${version}-pip`, 'python3-pip']
+      for (const name of packages) {
+        this.log(`使用 ${manager} 安装 ${name} …`)
+        await this.tryElevated(elevator, manager, ['install', '-y', name])
+        if (await this.venvUsable(systemPython)) return true
+      }
+      return false
+    }
+
+    // Alpine：pip 由 py3-pip 提供。
+    if ((await capture('apk', ['--version'], 8000)).ok) {
+      this.log('使用 apk 安装 py3-pip …')
+      await this.tryElevated(elevator, 'apk', ['add', '--no-cache', 'py3-pip'])
+      return await this.venvUsable(systemPython)
+    }
+
+    this.log('未识别到可用的系统包管理器，无法自动补齐 venv 支持。')
+    return false
+  }
+
+  /** ensurepip 是否可用（Debian 上缺 python3.x-venv 时会失败）。 */
+  private async venvUsable(systemPython: string): Promise<boolean> {
+    return (await capture(systemPython, ['-m', 'ensurepip', '--version'], 20000)).ok
+  }
+
+  /** 读取解释器的主次版本，例如 `3.12`；失败返回 null。 */
+  private async pythonVersionOf(systemPython: string): Promise<string | null> {
+    const result = await capture(
+      systemPython,
+      ['-c', 'import sys;print("%d.%d" % sys.version_info[:2])'],
+      15000,
+    )
+    if (!result.ok) return null
+    const match = result.stdout.match(/[0-9]+\.[0-9]+/u)
+    return match === null ? null : match[0]
+  }
+
+  /** venv 支持缺失时的可执行指引。 */
+  private venvSupportHint(systemPython: string): string {
+    const base = `创建虚拟环境失败：${systemPython} 缺少 venv / ensurepip 支持。`
+    if (process.platform === 'linux') {
+      return (
+        base +
+        '请手动安装后重试：Debian / Ubuntu 用 apt install python3-venv；' +
+        'Fedora / RHEL 用 dnf install python3-pip；Alpine 用 apk add py3-pip；' +
+        'Termux 用 pkg install python。'
+      )
+    }
+    if (process.platform === 'darwin') {
+      return base + '可用 brew install python@3.12 重新安装完整 Python。'
+    }
+    return base + '请从 python.org 安装完整版 Python（包含 pip 与 venv）。'
   }
 
   /** venv 中的 pip 是否可用。 */
@@ -503,6 +610,8 @@ export class InstallController {
     extraEnv?: Record<string, string>,
   ): Promise<void> {
     this.log(`$ ${file} ${args.join(' ')}`)
+    /** 最近几行输出，用于把失败原因写进错误消息。 */
+    const recent: string[] = []
     return new Promise((resolvePromise, reject) => {
       const child = spawn(file, [...args], {
         windowsHide: true,
@@ -516,16 +625,34 @@ export class InstallController {
         },
       })
 
-      child.stdout?.on('data', (chunk: Buffer) => this.appendChunk(chunk))
-      child.stderr?.on('data', (chunk: Buffer) => this.appendChunk(chunk))
+      const onData = (chunk: Buffer): void => {
+        this.appendChunk(chunk)
+        for (const line of String(chunk).split(/\r?\n/u)) {
+          const text = line.trim()
+          if (text === '') continue
+          recent.push(text)
+          if (recent.length > 8) recent.splice(0, recent.length - 8)
+        }
+      }
+
+      child.stdout?.on('data', onData)
+      child.stderr?.on('data', onData)
       child.on('error', (failure: Error) => {
         this.flushPending()
         reject(failure)
       })
       child.on('close', (code: number | null) => {
         this.flushPending()
-        if (code === 0) resolvePromise()
-        else reject(new Error(`命令退出码 ${code ?? '未知'}：${file}`))
+        if (code === 0) {
+          resolvePromise()
+          return
+        }
+        const tail = recent.slice(-3).join(' | ')
+        reject(
+          new Error(
+            `命令退出码 ${code ?? '未知'}：${file}${tail === '' ? '' : `（${tail}）`}`,
+          ),
+        )
       })
     })
   }
